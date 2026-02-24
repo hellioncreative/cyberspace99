@@ -270,6 +270,13 @@ function initEditor() {
             if (response.ok) {
                 statusMsg.textContent = "Saved successfully!";
                 setTimeout(() => statusMsg.textContent = "", 3000);
+                await fetchMapList(); // Auto-refresh dropdown so new maps appear immediately
+                // Sync current ID if this was a brand new map
+                const resData = await response.json();
+                if (resData && resData.id) {
+                    mapData.id = resData.id;
+                    mapSelect.value = resData.id;
+                }
             } else {
                 statusMsg.textContent = "Error saving map.";
             }
@@ -714,14 +721,20 @@ function initEditor() {
 
         window.addEventListener('mouseup', async (e) => {
             if (dragMode === 'node' && draggedNode) {
+                // Snap to a 150px grid for Lego-like connection layouts
+                const SNAP = 150;
+                draggedNode.x = Math.round(draggedNode.x / SNAP) * SNAP;
+                draggedNode.y = Math.round(draggedNode.y / SNAP) * SNAP;
+                drawNodeGraph();
+
                 // Save node layout
                 fetch('/api/maps/saveLayout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         id: draggedNode.id,
-                        x: Math.round(draggedNode.x),
-                        y: Math.round(draggedNode.y)
+                        x: draggedNode.x,
+                        y: draggedNode.y
                     })
                 }).catch(err => console.error("Error saving layout:", err));
             } else if (dragMode === 'link' && draggedNode) {
