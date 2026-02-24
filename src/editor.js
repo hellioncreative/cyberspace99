@@ -26,13 +26,10 @@ function initEditor() {
     const worldMapPanel = document.getElementById('world-map-panel');
     const openWorldMapBtn = document.getElementById('open-world-map-btn');
     const closeWorldMapBtn = document.getElementById('close-world-map-btn');
-    const worldMapList = document.getElementById('world-map-list');
-
     const viewToggle = document.getElementById('view-toggle');
     const graphCanvas = document.getElementById('graph-canvas');
     const toolbar = document.getElementById('toolbar');
     const instructions = document.getElementById('instructions');
-    const renderDom = renderer.domElement;
 
     document.querySelectorAll('.tool-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -54,6 +51,7 @@ function initEditor() {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
+    const renderDom = renderer.domElement;
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
