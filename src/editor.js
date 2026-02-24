@@ -26,6 +26,7 @@ function initEditor() {
     const worldMapPanel = document.getElementById('world-map-panel');
     const openWorldMapBtn = document.getElementById('open-world-map-btn');
     const closeWorldMapBtn = document.getElementById('close-world-map-btn');
+    const worldMapList = document.getElementById('world-map-list');
     const viewToggle = document.getElementById('view-toggle');
     const graphCanvas = document.getElementById('graph-canvas');
     const toolbar = document.getElementById('toolbar');
