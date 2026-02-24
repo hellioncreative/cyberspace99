@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web 3D Virtual World</title>
+  <script type="module" crossorigin src="/assets/main-BPwDAi-Y.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/three.module-D0DXM2gH.js">
+  <link rel="stylesheet" crossorigin href="/assets/three-DY3e6C8M.css">
+</head>
+
+<body>
+    <!-- Login Screen UI -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h1>CYBERSPACE99</h1>
+            <p>Enter your username to join the realm.</p>
+            <input type="text" id="username-input" placeholder="Username" maxlength="15" autocomplete="off" />
+            <button id="join-btn">ENTER</button>
+        </div>
+    </div>
+
+    <!-- Gameplay UI (Hidden initially) -->
+    <div id="game-ui" style="display: none;">
+        <div id="info" class="info">Connect a gamepad and press a button. Use WASD/Arrows if on keyboard.</div>
+        <!-- Chat Box -->
+        <div id="chat-container">
+            <div id="chat-messages"></div>
+            <input type="text" id="chat-input" placeholder="Say something..." autocomplete="off" />
+        </div>
+        <!-- NPC Dialog -->
+        <div id="dialog-box">
+            <p id="dialog-text">Hello there!</p>
+            <span id="close-button">Press (B) / Esc to close</span>
+        </div>
+
+        <!-- World Map UI -->
+        <button id="open-world-map-btn"
+            style="position: absolute; top: 20px; right: 20px; background: rgba(0, 136, 255, 0.8); border: 2px solid #00aaff; color: white; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; z-index: 1000; box-shadow: 0 4px 10px rgba(0, 170, 255, 0.3); backdrop-filter: blur(4px);">🌍
+            World Map</button>
+
+        <div id="world-map-panel"
+            style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(30, 30, 40, 0.95); border: 2px solid #00aaff; border-radius: 12px; padding: 25px; z-index: 2000; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); color: white; min-width: 320px; font-family: sans-serif; backdrop-filter: blur(8px);">
+            <h2
+                style="margin-top: 0; color: #00aaff; text-align: center; border-bottom: 1px solid #445; padding-bottom: 15px;">
+                Teleport Hub</h2>
+            <div id="world-map-list"
+                style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding-right: 5px;">
+                <!-- Room items will go here -->
+            </div>
+            <button id="close-world-map-btn"
+                style="width: 100%; background: #444; color: white; border: 1px solid #666; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">Close
+                Menu</button>
+        </div>
+    </div>
+
+    <!-- Vite Entry Point -->
+</body>
+
+</html>

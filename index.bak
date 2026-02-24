@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>glTF Gamepad Control</title>
+    <style>
+        /* Custom Font Definition */
+        @font-face {
+            font-family: 'Unispace';
+            src: url('unispace.woff') format('woff');
+        }
+
+        body { margin: 0; overflow: hidden; font-family: sans-serif; }
+        canvas { display: block; }
+        .info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            font-family: monospace;
+            border-radius: 8px;
+            z-index: 10;
+        }
+        
+        /* PS1-Style Dialog Box */
+        #dialog-box {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 600px;
+            padding: 25px;
+            background: rgba(0, 0, 50, 0.85);
+            color: white;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 100;
+            border-style: solid;
+            border-width: 18px;
+            border-image-source: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6NTQ4RERDRjAwNTM0MTFFN0JGN0VCRkY4Njc1NkY1NTQiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6NTQ4RERDRjEwNTM0MTFFN0JGN0VCRkY4Njc1NkY1NTQiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo1NDhERENGREU0NTM0MTFFN0JGN0VCRkY4Njc1NkY1NTQiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6NTQ4RERDRkYwNTM0MTFFN0JGN0VCRkY4Njc1NkY1NTQiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz4/HiGMAAAAdUlEQVR42uzVwQkAIAwEwSj+17u9A1gUf4I4gMvIYBAsCEs5A0sZAIAl2a6r2aKqyrJsWzZt2/Z93zdfN03TNE1RFIVhGIZhGIbhmI/7vu/7vu+7ruu6rmu6pmmKMAzDMAzDMAzDMAzDMIx5fAQYAG33A/0g3p2cAAAAAElFTSuQmCC');
+            border-image-slice: 9;
+            border-image-repeat: repeat;
+            image-rendering: pixelated;
+        }
+        #dialog-box.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+        #dialog-text {
+            margin: 0;
+            padding: 0;
+            line-height: 1.4;
+            font-family: 'Unispace', monospace;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        #close-button {
+            position: absolute;
+            bottom: 15px;
+            right: 25px;
+            font-family: 'Unispace', monospace;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div id="info" class="info">Connect a gamepad and press a button.</div>
+    <div id="dialog-box">
+        <p id="dialog-text">Hello there!</p>
+        <span id="close-button">Press (B) to close</span>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const textureLoader = new THREE.TextureLoader();
+        const cubeTextureLoader = new THREE.CubeTextureLoader();
+        const skyboxTexture = cubeTextureLoader.setPath('skybox/').load(['px.png', 'nx.png', 'py.png', 'ny.png', 'pz.png', 'nz.png']);
+        scene.background = skyboxTexture;
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(5, 10, 7.5);
+        scene.add(directionalLight);
+
+        const groundTexture = textureLoader.load('ground.png');
+        groundTexture.wrapS = THREE.RepeatWrapping;
+        groundTexture.wrapT = THREE.RepeatWrapping;
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMaterial = new THREE.MeshStandardMaterial({ map: groundTexture });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+
+        let model, mixer;
+        const moveSpeed = 3;
+        const playerRadius = 0.4;
+        const infoElement = document.getElementById('info');
+        
+        const mazeWalls = [];
+        const wallSize = 2.0;
+        const wallHeight = 3.0;
+
+        const npcGeometry = new THREE.SphereGeometry(0.5, 32, 16);
+        const npcMaterial = new THREE.MeshPhongMaterial({ color: 0x0088ff, emissive: 0x0055aa });
+        const npc = new THREE.Mesh(npcGeometry, npcMaterial);
+        npc.name = "Friendly Spirit";
+        npc.interactionMessage = "You found me in this maze!";
+        npc.radius = 0.5;
+        const npcs = [npc];
+
+        const dialogBox = document.getElementById('dialog-box');
+        const dialogText = document.getElementById('dialog-text');
+
+        const loader = new GLTFLoader();
+        loader.load('ghost.gltf', (gltf) => {
+            model = gltf.scene;
+            model.scale.set(0.8, 0.8, 0.8);
+            scene.add(model);
+            mixer = new THREE.AnimationMixer(model);
+            if (gltf.animations.length > 0) mixer.clipAction(gltf.animations[0]).play();
+        }, undefined, (error) => {
+            console.error("Error loading model:", error);
+            infoElement.textContent = "Error loading model. Check console and file path.";
+        });
+        
+        async function generateMaze() {
+            try {
+                const response = await fetch('maze.txt');
+                if (!response.ok) {
+                    infoElement.textContent = "Could not load maze.txt!";
+                    return;
+                }
+                const text = await response.text();
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+
+                const wallTexture = textureLoader.load('ground.png');
+                wallTexture.wrapS = THREE.RepeatWrapping;
+                wallTexture.wrapT = THREE.RepeatWrapping;
+                const wallGeometry = new THREE.BoxGeometry(wallSize, wallHeight, wallSize);
+                
+                let playerStartPosition = null;
+                let npcStartPosition = null;
+
+                lines.forEach((line, z) => {
+                    for (let x = 0; x < line.length; x++) {
+                        const char = line[x];
+                        const xPos = (x - line.length / 2) * wallSize;
+                        const zPos = (z - lines.length / 2) * wallSize;
+
+                        if (char === 'X') {
+                            const wallMaterial = new THREE.MeshStandardMaterial({ map: wallTexture });
+                            const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                            wall.position.set(xPos, wallHeight / 2, zPos);
+                            scene.add(wall);
+                            wall.userData.box = new THREE.Box3().setFromObject(wall);
+                            mazeWalls.push(wall);
+                        } else if (char === '-') {
+                            if (!playerStartPosition) {
+                                playerStartPosition = new THREE.Vector3(xPos, 0, zPos);
+                            } else if (!npcStartPosition) {
+                                npcStartPosition = new THREE.Vector3(xPos, 0.5, zPos);
+                            }
+                        }
+                    }
+                });
+
+                if (model && playerStartPosition) {
+                    model.position.copy(playerStartPosition);
+                }
+                if (npcStartPosition) {
+                    npc.position.copy(npcStartPosition);
+                    scene.add(npc);
+                } else {
+                    scene.remove(npc);
+                    npcs.length = 0; // Remove npc if no spot is found
+                }
+
+            } catch (error) {
+                console.error("Error generating maze:", error);
+                infoElement.textContent = "Error parsing maze.txt";
+            }
+        }
+        generateMaze();
+
+
+        let cameraAzimuth = Math.PI;
+        let cameraElevation = 0.4;
+        const cameraDistance = 3.5;
+
+        let gamepad = null, gamepadIndex = null, aButtonPressed = false, bButtonPressed = false;
+        window.addEventListener("gamepadconnected", e => {
+            gamepad = e.gamepad; gamepadIndex = e.gamepad.index;
+            infoElement.textContent = `Gamepad connected: ${gamepad.id}`;
+        });
+        window.addEventListener("gamepaddisconnected", e => {
+            if (gamepadIndex === e.gamepad.index) {
+                gamepad = null; gamepadIndex = null;
+                infoElement.textContent = "Connect a gamepad and press a button.";
+            }
+        });
+
+        const clock = new THREE.Clock();
+        const cameraForward = new THREE.Vector3();
+        const cameraRight = new THREE.Vector3();
+        const moveVector = new THREE.Vector3();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            if (navigator.getGamepads()[gamepadIndex]) gamepad = navigator.getGamepads()[gamepadIndex];
+
+            if (model && gamepad && !dialogBox.classList.contains('visible')) {
+                const leftStickX = gamepad.axes[0];
+                const leftStickY = gamepad.axes[1];
+                const deadzone = 0.15;
+
+                if (Math.abs(leftStickX) > deadzone || Math.abs(leftStickY) > deadzone) {
+                    camera.getWorldDirection(cameraForward);
+                    cameraForward.y = 0;
+                    cameraForward.normalize();
+                    cameraRight.crossVectors(camera.up, cameraForward).negate();
+                    moveVector.copy(cameraForward).multiplyScalar(-leftStickY).add(cameraRight.multiplyScalar(leftStickX));
+                    moveVector.normalize().multiplyScalar(moveSpeed * delta);
+
+                    // --- FIXED: Sliding Collision Logic ---
+                    const allCollidables = [...mazeWalls, ...npcs];
+                    
+                    // Check X-axis collision
+                    const moveX = new THREE.Vector3(moveVector.x, 0, 0);
+                    const playerColliderX = new THREE.Box3().setFromCenterAndSize(model.position.clone().add(moveX), new THREE.Vector3(playerRadius * 2, wallHeight, playerRadius * 2));
+                    let collisionX = false;
+                    for(const obj of allCollidables) {
+                        const objBox = obj.radius ? new THREE.Box3().setFromCenterAndSize(obj.position, new THREE.Vector3(obj.radius*2, obj.radius*2, obj.radius*2)) : obj.userData.box;
+                        if(playerColliderX.intersectsBox(objBox)) {
+                            collisionX = true;
+                            break;
+                        }
+                    }
+                    if(!collisionX) model.position.add(moveX);
+                    
+                    // Check Z-axis collision
+                    const moveZ = new THREE.Vector3(0, 0, moveVector.z);
+                    const playerColliderZ = new THREE.Box3().setFromCenterAndSize(model.position.clone().add(moveZ), new THREE.Vector3(playerRadius * 2, wallHeight, playerRadius * 2));
+                    let collisionZ = false;
+                    for(const obj of allCollidables) {
+                        const objBox = obj.radius ? new THREE.Box3().setFromCenterAndSize(obj.position, new THREE.Vector3(obj.radius*2, obj.radius*2, obj.radius*2)) : obj.userData.box;
+                        if(playerColliderZ.intersectsBox(objBox)) {
+                            collisionZ = true;
+                            break;
+                        }
+                    }
+                    if(!collisionZ) model.position.add(moveZ);
+
+                    model.position.y = 0;
+
+                    if (moveVector.lengthSq() > 0.0001) {
+                        const targetAngle = Math.atan2(moveVector.x, moveVector.z);
+                        const targetQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAngle);
+                        model.quaternion.slerp(targetQuaternion, 0.2);
+                    }
+                }
+            }
+            
+            if (gamepad) {
+                const rightStickX = gamepad.axes[2];
+                const rightStickY = gamepad.axes[3];
+                const rotationSpeed = 2.5;
+                const deadzone = 0.15;
+
+                if (Math.abs(rightStickX) > deadzone) {
+                    cameraAzimuth -= rightStickX * rotationSpeed * delta;
+                }
+                if (Math.abs(rightStickY) > deadzone) {
+                    cameraElevation -= rightStickY * rotationSpeed * delta;
+                    // --- FIXED: Even Tighter camera angle lock ---
+                    cameraElevation = Math.max(0.3, Math.min(Math.PI / 3, cameraElevation));
+                }
+                
+                if (gamepad.buttons[0].pressed && !aButtonPressed && !dialogBox.classList.contains('visible')) {
+                    aButtonPressed = true;
+                    if (model) {
+                        for (const currentNpc of npcs) {
+                            if (model.position.distanceTo(currentNpc.position) < 2.0) {
+                                dialogText.textContent = currentNpc.interactionMessage;
+                                dialogBox.classList.add('visible');
+                                break;
+                            }
+                        }
+                    }
+                } else if (!gamepad.buttons[0].pressed) aButtonPressed = false;
+
+                if (gamepad.buttons[1].pressed && !bButtonPressed && dialogBox.classList.contains('visible')) {
+                    bButtonPressed = true;
+                    dialogBox.classList.remove('visible');
+                } else if (!gamepad.buttons[1].pressed) bButtonPressed = false;
+            }
+
+            if (mixer) mixer.update(delta);
+            
+            if(model) {
+                const targetPosition = model.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+                const camX = targetPosition.x + cameraDistance * Math.sin(cameraAzimuth) * Math.cos(cameraElevation);
+                const camZ = targetPosition.z + cameraDistance * Math.cos(cameraAzimuth) * Math.cos(cameraElevation);
+                const camY = targetPosition.y + cameraDistance * Math.sin(cameraElevation);
+                camera.position.set(camX, camY, camZ);
+                camera.lookAt(targetPosition);
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,23 @@
+{
+  "name": "cyberspace99.com",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "dev:backend": "node server/server.js",
+    "dev:frontend": "vite",
+    "dev": "npm run dev:backend & npm run dev:frontend",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.3",
+    "three": "^0.166.1"
+  },
+  "devDependencies": {
+    "vite": "^5.3.1"
+  }
+}

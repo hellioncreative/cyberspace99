@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Editor</title>
+    <style>
+        @font-face {
+            font-family: 'Unispace';
+            src: url('unispace.woff') format('woff');
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #333;
+            color: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+            gap: 30px;
+        }
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #grid-container {
+            display: grid;
+            grid-template-columns: repeat(40, 20px);
+            border: 2px solid #555;
+            background-color: #444;
+            user-select: none;
+        }
+        .grid-cell {
+            width: 20px;
+            height: 20px;
+            box-sizing: border-box;
+            border: 1px solid #555;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Unispace', monospace;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .cell-wall { background-color: #666; }
+        .cell-start { background-color: #4CAF50; color: white; }
+        .cell-exit { background-color: #f44336; color: white; }
+        .cell-npc { background-color: #2196F3; color: white; }
+
+        .sidebar {
+            width: 200px;
+            padding: 20px;
+            background-color: #444;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .tool {
+            padding: 10px;
+            border: 2px solid #666;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .tool.selected {
+            border-color: #00bcd4;
+            background-color: #555;
+        }
+        #output-container {
+            margin-top: 20px;
+            width: 100%;
+        }
+        #maze-output {
+            width: 100%;
+            height: 200px;
+            background-color: #222;
+            color: #eee;
+            border: 1px solid #555;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0099cc;
+        }
+        h2, h3 {
+            margin-top: 0;
+            color: #00bcd4;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <h2>Maze Editor</h2>
+        <div id="grid-container"></div>
+        <div id="output-container">
+            <h3>Generated Maze Text</h3>
+            <button id="generate-btn">Generate Text</button>
+            <button id="download-btn">Download as maze.txt</button>
+            <textarea id="maze-output" readonly></textarea>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <h3>Tools</h3>
+        <div class="tool selected" data-tool="X">Wall (X)</div>
+        <div class="tool" data-tool="-">Eraser (-)</div>
+        <div class="tool" data-tool="^">Player Start (^,v,&lt;,&gt;)</div>
+        <div class="tool" data-tool="E">Level Exit (E)</div>
+        <div class="tool" data-tool="1">NPC (1)</div>
+    </div>
+
+    <script>
+        const gridContainer = document.getElementById('grid-container');
+        const tools = document.querySelectorAll('.tool');
+        const generateBtn = document.getElementById('generate-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const mazeOutput = document.getElementById('maze-output');
+
+        const GRID_WIDTH = 40;
+        const GRID_HEIGHT = 25;
+        let selectedTool = 'X';
+        let isDrawing = false;
+        
+        // --- NEW: Array of start characters for easy checking and cycling ---
+        const startChars = ['^', '>', 'v', '<'];
+        
+        const gridData = Array(GRID_HEIGHT).fill(null).map(() => Array(GRID_WIDTH).fill('-'));
+        const gridCells = []; 
+
+        function renderGrid() {
+            gridContainer.innerHTML = '';
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                gridCells[y] = [];
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('grid-cell');
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    gridContainer.appendChild(cell);
+                    gridCells[y][x] = cell;
+                    updateCell(cell, gridData[y][x]);
+                }
+            }
+        }
+
+        function updateCell(cell, char) {
+            cell.textContent = char === '-' ? '' : char;
+            cell.className = 'grid-cell'; // Reset classes
+            if (char === 'X') cell.classList.add('cell-wall');
+            else if (startChars.includes(char)) cell.classList.add('cell-start'); // CHANGED: Check for any start character
+            else if (char === 'E') cell.classList.add('cell-exit');
+            else if (char === '1') cell.classList.add('cell-npc');
+        }
+
+        function applyTool(cellElement) {
+            const x = parseInt(cellElement.dataset.x);
+            const y = parseInt(cellElement.dataset.y);
+            
+            if (gridData[y][x] === selectedTool) return;
+            
+            // --- CHANGED: Now checks for all unique characters (Start, Exit, NPC) ---
+            const uniqueChars = [...startChars, 'E', '1'];
+            if (uniqueChars.includes(selectedTool)) {
+                for (let r = 0; r < GRID_HEIGHT; r++) {
+                    for (let c = 0; c < GRID_WIDTH; c++) {
+                        // If the tool is a start tool, remove any other start tool
+                        if (startChars.includes(selectedTool) && startChars.includes(gridData[r][c])) {
+                             gridData[r][c] = '-';
+                             updateCell(gridCells[r][c], '-');
+                        } 
+                        // If the tool is any other unique tool (E, 1), remove it
+                        else if (gridData[r][c] === selectedTool) {
+                             gridData[r][c] = '-';
+                             updateCell(gridCells[r][c], '-');
+                        }
+                    }
+                }
+            }
+
+            gridData[y][x] = selectedTool;
+            updateCell(cellElement, selectedTool);
+        }
+
+        gridContainer.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('grid-cell')) {
+                const x = parseInt(e.target.dataset.x);
+                const y = parseInt(e.target.dataset.y);
+                const currentCellChar = gridData[y][x];
+
+                // --- NEW: Logic to cycle direction on click ---
+                if (startChars.includes(currentCellChar)) {
+                    const currentIndex = startChars.indexOf(currentCellChar);
+                    const nextIndex = (currentIndex + 1) % startChars.length;
+                    const newChar = startChars[nextIndex];
+                    gridData[y][x] = newChar;
+                    updateCell(e.target, newChar);
+                    isDrawing = false; // Prevent dragging from overwriting the cycle
+                } else {
+                    isDrawing = true;
+                    applyTool(e.target);
+                }
+            }
+        });
+
+        gridContainer.addEventListener('mouseover', (e) => {
+            if (isDrawing && e.target.classList.contains('grid-cell')) {
+                applyTool(e.target);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+        
+        document.body.addEventListener('mousedown', (e) => {
+             if (e.target.closest('#grid-container')) {
+                e.preventDefault();
+             }
+        });
+
+        tools.forEach(tool => {
+            tool.addEventListener('click', () => {
+                tools.forEach(t => t.classList.remove('selected'));
+                tool.classList.add('selected');
+                selectedTool = tool.dataset.tool;
+            });
+        });
+
+        generateBtn.addEventListener('click', () => {
+            const output = gridData.map(row => row.join('')).join('\n');
+            mazeOutput.value = output;
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const text = gridData.map(row => row.join('')).join('\n');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const anchor = document.createElement('a');
+            anchor.download = 'maze.txt';
+            anchor.href = window.URL.createObjectURL(blob);
+            anchor.click();
+            window.URL.revokeObjectURL(anchor.href);
+        });
+
+        renderGrid();
+    </script>
+</body>
+</html>
