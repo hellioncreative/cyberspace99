@@ -721,10 +721,11 @@ function initEditor() {
 
         window.addEventListener('mouseup', async (e) => {
             if (dragMode === 'node' && draggedNode) {
-                // Snap to a 150px grid for Lego-like connection layouts
-                const SNAP = 150;
-                draggedNode.x = Math.round(draggedNode.x / SNAP) * SNAP;
-                draggedNode.y = Math.round(draggedNode.y / SNAP) * SNAP;
+                // Snap to a 120x60 grid so the blocks touch flush against each other
+                const SNAP_X = 120;
+                const SNAP_Y = 60;
+                draggedNode.x = Math.round(draggedNode.x / SNAP_X) * SNAP_X;
+                draggedNode.y = Math.round(draggedNode.y / SNAP_Y) * SNAP_Y;
                 drawNodeGraph();
 
                 // Save node layout
