@@ -423,10 +423,15 @@ function initEditor() {
                 const objects = data.objects || [];
                 const exits = objects.filter(o => o.type === 'exit' && o.targetMapId).map(o => o.targetMapId);
 
-                // Try to lay them out in a grid
-                const cols = Math.ceil(Math.sqrt(detailedMaps.length));
-                currentX = (index % cols) * spacing - ((cols * spacing) / 2);
-                currentY = Math.floor(index / cols) * spacing - ((cols * spacing) / 2);
+                // Try to lay them out in a grid ONLY IF no graph coordinates are saved
+                if (mapObj.graph_x !== null && mapObj.graph_x !== undefined && mapObj.graph_y !== null && mapObj.graph_y !== undefined) {
+                    currentX = mapObj.graph_x;
+                    currentY = mapObj.graph_y;
+                } else {
+                    const cols = Math.ceil(Math.sqrt(detailedMaps.length));
+                    currentX = (index % cols) * spacing - ((cols * spacing) / 2);
+                    currentY = Math.floor(index / cols) * spacing - ((cols * spacing) / 2);
+                }
 
                 worldGraphData.push({
                     id: mapObj.id,
@@ -513,28 +518,144 @@ function initEditor() {
         ctx.restore();
     }
 
-    // Graph Canvas Interactions (Pan around)
+    // Graph Canvas Interactions (Pan & Drag Nodes)
+    let draggedNode = null;
+    let dragMode = 'none'; // 'pan', 'node', or 'link'
+    let linkMousePos = null;
+
+    function getScreenToWorldXY(e) {
+        return {
+            x: e.clientX - graphOffset.x,
+            y: e.clientY - graphOffset.y
+        };
+    }
+
     if (graphCanvas) {
         graphCanvas.addEventListener('mousedown', (e) => {
-            isDraggingGraph = true;
+            if (!viewToggle || viewToggle.value !== 'world') return;
             dragStart = { x: e.clientX, y: e.clientY };
-            graphCanvas.style.cursor = 'grabbing';
-        });
 
-        window.addEventListener('mousemove', (e) => {
-            if (isDraggingGraph && viewToggle && viewToggle.value === 'world') {
-                const dx = e.clientX - dragStart.x;
-                const dy = e.clientY - dragStart.y;
-                graphOffset.x += dx;
-                graphOffset.y += dy;
-                dragStart = { x: e.clientX, y: e.clientY };
-                drawNodeGraph();
+            const worldPos = getScreenToWorldXY(e);
+
+            // Check if clicked inside any node
+            draggedNode = worldGraphData.find(n => {
+                return worldPos.x >= n.x - 60 && worldPos.x <= n.x + 60 &&
+                    worldPos.y >= n.y - 30 && worldPos.y <= n.y + 30;
+            });
+
+            if (draggedNode && currentTool === 'link') {
+                dragMode = 'link';
+                linkMousePos = worldPos;
+                graphCanvas.style.cursor = 'crosshair';
+            } else if (draggedNode) {
+                dragMode = 'node';
+                graphCanvas.style.cursor = 'move';
+            } else {
+                dragMode = 'pan';
+                graphCanvas.style.cursor = 'grabbing';
             }
         });
 
-        window.addEventListener('mouseup', () => {
-            isDraggingGraph = false;
-            if (graphCanvas) graphCanvas.style.cursor = 'grab';
+        window.addEventListener('mousemove', (e) => {
+            if (!viewToggle || viewToggle.value !== 'world' || dragMode === 'none') return;
+
+            const dx = e.clientX - dragStart.x;
+            const dy = e.clientY - dragStart.y;
+
+            if (dragMode === 'pan') {
+                graphOffset.x += dx;
+                graphOffset.y += dy;
+            } else if (dragMode === 'node' && draggedNode) {
+                draggedNode.x += dx;
+                draggedNode.y += dy;
+            } else if (dragMode === 'link') {
+                linkMousePos = getScreenToWorldXY(e);
+            }
+
+            dragStart = { x: e.clientX, y: e.clientY };
+            drawNodeGraph();
+
+            // Intercept Draw call to add the temporary drag line
+            if (dragMode === 'link' && draggedNode && linkMousePos) {
+                const ctx = graphCanvas.getContext('2d');
+                ctx.save();
+                ctx.translate(graphOffset.x, graphOffset.y);
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(255, 200, 0, 0.8)';
+                ctx.setLineDash([5, 5]);
+                ctx.lineWidth = 3;
+                ctx.moveTo(draggedNode.x, draggedNode.y);
+                ctx.lineTo(linkMousePos.x, linkMousePos.y);
+                ctx.stroke();
+                ctx.restore();
+            }
+        });
+
+        window.addEventListener('mouseup', async (e) => {
+            if (dragMode === 'node' && draggedNode) {
+                // Save node layout
+                fetch('/api/maps/saveLayout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: draggedNode.id,
+                        x: Math.round(draggedNode.x),
+                        y: Math.round(draggedNode.y)
+                    })
+                }).catch(err => console.error("Error saving layout:", err));
+            } else if (dragMode === 'link' && draggedNode) {
+                const worldPos = getScreenToWorldXY(e);
+                const targetNode = worldGraphData.find(n => {
+                    return n.id !== draggedNode.id &&
+                        worldPos.x >= n.x - 60 && worldPos.x <= n.x + 60 &&
+                        worldPos.y >= n.y - 30 && worldPos.y <= n.y + 30;
+                });
+
+                if (targetNode) {
+                    // We dropped the link on a valid target. Add an entry to the start-node's Map Data!
+                    try {
+                        statusMsg.textContent = "Connecting Rooms...";
+                        // Fetch the source map to inject a new connection exit block
+                        const sourceRes = await fetch(`/api/maps/${draggedNode.id}`);
+                        const sourceMap = await sourceRes.json();
+
+                        // Give it an arbitrary exit placement near spawn for now. The user can move it in 3D later.
+                        const newObjects = sourceMap.data.objects || [];
+                        newObjects.push({
+                            type: 'exit',
+                            x: (sourceMap.data.spawn?.x || 0) + 1,
+                            z: (sourceMap.data.spawn?.z || 0),
+                            targetMapId: targetNode.id
+                        });
+
+                        await fetch('/api/maps/save', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id: sourceMap.id,
+                                name: sourceMap.name,
+                                spawn: sourceMap.data.spawn,
+                                objects: newObjects
+                            })
+                        });
+
+                        // We connected them! Redraw graph!
+                        await fetchFullWorldGraph();
+                        drawNodeGraph();
+                        statusMsg.textContent = "Link Created!";
+                    } catch (err) {
+                        console.error(err);
+                        statusMsg.textContent = "Error Linking Rooms";
+                    }
+                }
+            }
+
+            dragMode = 'none';
+            draggedNode = null;
+            linkMousePos = null;
+            if (graphCanvas && viewToggle && viewToggle.value === 'world') {
+                graphCanvas.style.cursor = 'grab';
+            }
         });
     }
 

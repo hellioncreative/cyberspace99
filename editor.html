@@ -59,13 +59,15 @@
             position: absolute;
             top: 20px;
             left: 20px;
+            right: 20px;
             z-index: 100;
             background: rgba(30, 30, 30, 0.9);
             padding: 15px 25px;
             border-radius: 8px;
             border: 1px solid #444;
             display: flex;
-            gap: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
             align-items: center;
             color: white;
             font-family: sans-serif;
@@ -129,9 +131,10 @@
 
 <body>
     <div id="top-bar">
-        <h2>Map Builder</h2>
-        <div style="margin-left: 20px; padding-left: 20px; border-left: 1px solid #555;">
-            <label style="margin-right: 8px; color: #bbb;">Load Map:</label>
+        <h2 style="flex-shrink: 0; margin-right: 10px;">Map Builder</h2>
+        <div
+            style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-left: 15px; border-left: 1px solid #555;">
+            <label style="color: #bbb;">Load Map:</label>
             <select id="map-select"
                 style="background: #222; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 4px;">
                 <option value="">-- New Map --</option>
@@ -139,7 +142,7 @@
             <button id="load-btn"
                 style="background: #0088ff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Load</button>
         </div>
-        <div style="margin-left: auto; display: flex; gap: 15px; align-items: center;">
+        <div style="margin-left: auto; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
             <div
                 style="background: #2a2a3a; padding: 5px; border-radius: 6px; border: 1px solid #445; display: flex; align-items: center;">
                 <label style="color: #bbb; margin: 0 10px; font-weight: bold; font-size: 14px;">View:</label>
@@ -151,13 +154,15 @@
             </div>
 
             <button id="open-world-map-btn"
-                style="background: #2a2a3a; color: white; border: 1px solid #445; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px;">🌍
+                style="background: #2a2a3a; color: white; border: 1px solid #445; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; flex-shrink: 0;">🌍
                 Teleport Hub</button>
-            <label style="color: #bbb;">Name:</label>
-            <input type="text" id="map-name" value="New Room" />
         </div>
-        <button id="save-btn">Save to DB</button>
-        <div id="status-msg" style="color: #ff0; font-weight: bold; min-width: 150px;"></div>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <label style="color: #bbb;">Name:</label>
+            <input type="text" id="map-name" value="New Room" style="width: 150px;" />
+            <button id="save-btn">Save to DB</button>
+            <div id="status-msg" style="color: #ff0; font-weight: bold; min-width: 120px;"></div>
+        </div>
     </div>
     <div id="toolbar">
         <div style="display: flex; gap: 5px;">
@@ -171,12 +176,14 @@
         </div>
         <button class="tool-btn" data-tool="npc">🤖 NPC</button>
         <button class="tool-btn" data-tool="exit">🚪 Exit</button>
+        <button class="tool-btn" data-tool="link" style="background: #0055aa;">🔗 Link Rooms</button>
         <button class="tool-btn" data-tool="spawn">📍 Set Spawn</button>
         <button class="tool-btn eraser" data-tool="erase">❌ Eraser</button>
     </div>
     <div id="instructions">
-        <strong>Left Click + Drag</strong>: Use Tool &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Right Click + Drag</strong>:
-        Orbit Camera
+        <strong>Left Click + Drag</strong>: Use Tool (Draw Walls / Connect Rooms in Graph) &nbsp;&nbsp;|&nbsp;&nbsp;
+        <strong>Right Click + Drag</strong>:
+        Orbit Area Camera
     </div>
 
     <!-- World Map Panel Overlay -->

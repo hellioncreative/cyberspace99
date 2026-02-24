@@ -106,6 +106,29 @@ app.post('/api/maps/save', async (req, res) => {
     }
 });
 
+// Update World Graph Node Positions
+app.post('/api/maps/saveLayout', async (req, res) => {
+    try {
+        const { id, x, y } = req.body;
+        if (!id) return res.status(400).json({ error: "Missing ID" });
+
+        const result = await supabase
+            .from('maps')
+            .update({ graph_x: x, graph_y: y })
+            .eq('id', id);
+
+        if (result.error) {
+            console.error("Error saving layout:", result.error);
+            return res.status(500).json({ error: result.error.message });
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Layout Save error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 const players = {};
 
 io.on('connection', (socket) => {
