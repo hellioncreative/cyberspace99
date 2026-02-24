@@ -129,6 +129,28 @@ app.post('/api/maps/saveLayout', async (req, res) => {
     }
 });
 
+app.delete('/api/maps/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: "Missing ID" });
+
+        const { error } = await supabase
+            .from('maps')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error("Error deleting map:", error);
+            return res.status(500).json({ error: error.message });
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Delete error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 const players = {};
 
 io.on('connection', (socket) => {

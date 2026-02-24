@@ -22,6 +22,7 @@ function initEditor() {
     const statusMsg = document.getElementById('status-msg');
     const mapSelect = document.getElementById('map-select');
     const loadBtn = document.getElementById('load-btn');
+    const deleteBtn = document.getElementById('delete-btn');
     const textureSelect = document.getElementById('texture-select');
     const worldMapPanel = document.getElementById('world-map-panel');
     const openWorldMapBtn = document.getElementById('open-world-map-btn');
@@ -246,6 +247,12 @@ function initEditor() {
                 opt.textContent = m.name;
                 mapSelect.appendChild(opt);
             });
+            // Ensure delete button visibility is correct after list refresh
+            if (mapSelect.value) {
+                if (deleteBtn) deleteBtn.style.display = 'inline-block';
+            } else {
+                if (deleteBtn) deleteBtn.style.display = 'none';
+            }
         } catch (e) {
             console.error("Map list fetch error:", e);
         }
@@ -288,6 +295,18 @@ function initEditor() {
         worldMapPanel.style.display = 'none';
     });
 
+    if (mapSelect) {
+        mapSelect.addEventListener('change', () => {
+            if (mapSelect.value && statusMsg) {
+                statusMsg.textContent = "Map selected. Click Load.";
+                // Show delete button only if you select an existing custom map, not the "-- New Map --" default
+                if (deleteBtn) deleteBtn.style.display = 'inline-block';
+            } else {
+                if (deleteBtn) deleteBtn.style.display = 'none';
+            }
+        });
+    }
+
     if (loadBtn) loadBtn.addEventListener('click', async () => {
         const id = mapSelect.value;
         if (!id) {
@@ -296,6 +315,7 @@ function initEditor() {
             mapData.spawn = { x: 0, z: 0 };
             mapData.objects = [];
             if (mapNameInput) mapNameInput.value = "New Room";
+            if (deleteBtn) deleteBtn.style.display = 'none';
             Array.from(placedObjects.values()).forEach(mesh => scene.remove(mesh));
             placedObjects.clear();
             updateSpawnIndicator();
@@ -315,6 +335,7 @@ function initEditor() {
             mapData.spawn = data.data?.spawn || { x: 0, z: 0 };
             mapData.objects = data.data?.objects || [];
             if (mapNameInput) mapNameInput.value = mapData.name;
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
 
             Array.from(placedObjects.values()).forEach(mesh => scene.remove(mesh));
             placedObjects.clear();
@@ -347,8 +368,49 @@ function initEditor() {
         } catch (err) {
             console.error(err);
             statusMsg.textContent = "Error loading map";
+        } finally {
+            loadBtn.disabled = false;
         }
-        loadBtn.disabled = false;
+    });
+
+    if (deleteBtn) deleteBtn.addEventListener('click', async () => {
+        const id = mapSelect.value;
+        if (!id) return;
+
+        if (!confirm("Are you sure you want to permanently delete this map? This cannot be undone.")) {
+            return;
+        }
+
+        try {
+            statusMsg.textContent = "Deleting map...";
+            deleteBtn.disabled = true;
+
+            const res = await fetch(`/api/maps/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error("Delete failed");
+
+            statusMsg.textContent = "Map deleted!";
+            setTimeout(() => statusMsg.textContent = "", 3000);
+
+            // Re-fetch dropdown list
+            await fetchMapList();
+
+            // Re-draw graph if that view is active
+            if (viewToggle && viewToggle.value === 'world') {
+                await fetchFullWorldGraph();
+                drawNodeGraph();
+            }
+
+            // Immediately clear the 3D scene and reset to "New Map"
+            mapSelect.value = "";
+            mapSelect.dispatchEvent(new Event('change'));
+            loadBtn.click();
+
+        } catch (err) {
+            console.error(err);
+            statusMsg.textContent = "Error deleting map";
+        } finally {
+            deleteBtn.disabled = false;
+        }
     });
 
     function animate() {
