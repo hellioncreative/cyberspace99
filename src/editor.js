@@ -373,7 +373,9 @@ function initEditor() {
         }
     });
 
-    if (deleteBtn) deleteBtn.addEventListener('click', async () => {
+    if (deleteBtn) deleteBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const id = mapSelect.value;
         if (!id) return;
 
