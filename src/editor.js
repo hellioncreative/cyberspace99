@@ -22,6 +22,10 @@ function initEditor() {
     const statusMsg = document.getElementById('status-msg');
     const mapSelect = document.getElementById('map-select');
     const loadBtn = document.getElementById('load-btn');
+    const worldMapPanel = document.getElementById('world-map-panel');
+    const openWorldMapBtn = document.getElementById('open-world-map-btn');
+    const closeWorldMapBtn = document.getElementById('close-world-map-btn');
+    const worldMapList = document.getElementById('world-map-list');
 
     document.querySelectorAll('.tool-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -232,6 +236,42 @@ function initEditor() {
         }
     }
     if (mapSelect) fetchMapList();
+
+    if (openWorldMapBtn) openWorldMapBtn.addEventListener('click', async () => {
+        worldMapPanel.style.display = 'block';
+        worldMapList.innerHTML = '<div style="text-align:center; color:#888;">Scanning network...</div>';
+        try {
+            const res = await fetch('/api/maps');
+            const maps = await res.json();
+            worldMapList.innerHTML = '';
+            if (!maps || maps.length === 0) {
+                worldMapList.innerHTML = '<div style="text-align:center; color:#888;">No rooms available.</div>';
+                return;
+            }
+            maps.forEach(m => {
+                const btn = document.createElement('button');
+                btn.textContent = m.name || "Untitled Room";
+                btn.style = "background: #2a2a3a; color: white; padding: 14px; border: 1px solid #445; border-radius: 6px; cursor: pointer; text-align: left; transition: all 0.2s; font-weight: bold; font-size: 16px;";
+                btn.onmouseover = () => { btn.style.background = "#3a3a4a"; btn.style.borderColor = "#00aaff"; };
+                btn.onmouseout = () => { btn.style.background = "#2a2a3a"; btn.style.borderColor = "#445"; };
+                btn.onclick = () => {
+                    worldMapPanel.style.display = 'none';
+                    if (mapSelect) {
+                        mapSelect.value = m.id;
+                        if (loadBtn) loadBtn.click();
+                    }
+                };
+                worldMapList.appendChild(btn);
+            });
+        } catch (e) {
+            console.error(e);
+            worldMapList.innerHTML = '<div style="text-align:center; color:#ff4444;">Connection failed.</div>';
+        }
+    });
+
+    if (closeWorldMapBtn) closeWorldMapBtn.addEventListener('click', () => {
+        worldMapPanel.style.display = 'none';
+    });
 
     if (loadBtn) loadBtn.addEventListener('click', async () => {
         const id = mapSelect.value;

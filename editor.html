@@ -139,8 +139,11 @@
             <button id="load-btn"
                 style="background: #0088ff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Load</button>
         </div>
-        <div style="margin-left: auto;">
-            <label style="margin-right: 8px; color: #bbb;">Name:</label>
+        <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+            <button id="open-world-map-btn"
+                style="background: #2a2a3a; color: white; border: 1px solid #445; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px;">🌍
+                World Map</button>
+            <label style="color: #bbb;">Name:</label>
             <input type="text" id="map-name" value="New Room" />
         </div>
         <button id="save-btn">Save to DB</button>
@@ -157,6 +160,21 @@
         <strong>Left Click + Drag</strong>: Use Tool &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Right Click + Drag</strong>:
         Orbit Camera
     </div>
+
+    <!-- World Map Panel Overlay -->
+    <div id="world-map-panel"
+        style="display: none; position: absolute; top: 10%; left: 50%; transform: translateX(-50%); width: 80%; max-width: 600px; background: rgba(20, 20, 25, 0.95); border: 2px solid #556; border-radius: 12px; padding: 20px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.8); font-family: sans-serif;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: white; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">World Map</h2>
+            <button id="close-world-map-btn"
+                style="background: #ff4444; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Close</button>
+        </div>
+        <div id="world-map-list"
+            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; max-height: 400px; overflow-y: auto;">
+            <!-- Buttons injected by JS -->
+        </div>
+    </div>
+
     <script type="module" src="/src/editor.js"></script>
 </body>
 
