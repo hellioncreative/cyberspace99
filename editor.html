@@ -9,7 +9,7 @@
         #toolbar {
             position: absolute;
             left: 20px;
-            top: 100px;
+            top: 130px;
             background: rgba(30, 30, 30, 0.9);
             border: 1px solid #444;
             border-radius: 8px;
@@ -125,6 +125,19 @@
             pointer-events: none;
             border: 1px solid #333;
             font-size: 14px;
+        }
+
+        /* Responsive Layout Adjustments */
+        @media (max-width: 1200px) {
+            #toolbar {
+                top: 150px;
+            }
+        }
+
+        @media (max-width: 850px) {
+            #toolbar {
+                top: 200px;
+            }
         }
     </style>
 </head>
