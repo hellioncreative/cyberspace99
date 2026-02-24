@@ -222,7 +222,10 @@ async function loadLevel(levelIndex) {
             infoElement.textContent = `You beat the game! No map found.`;
             return;
         }
-        const mapData = await response.json();
+        const dbRow = await response.json();
+        const mapData = dbRow.data || { spawn: null, objects: [] };
+        mapData.name = dbRow.name || "Untitled";
+        mapData.id = dbRow.id || levelIndex;
 
         infoElement.textContent = `Joined Room: ${mapData.name} - Connect a gamepad and press a button.`;
 

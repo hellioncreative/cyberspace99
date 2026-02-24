@@ -71,7 +71,7 @@ app.get('/api/maps/:id', async (req, res) => {
         });
     }
 
-    res.json(mapData.data);
+    res.json(mapData);
 });
 
 app.post('/api/maps/save', async (req, res) => {
