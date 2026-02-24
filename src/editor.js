@@ -22,10 +22,17 @@ function initEditor() {
     const statusMsg = document.getElementById('status-msg');
     const mapSelect = document.getElementById('map-select');
     const loadBtn = document.getElementById('load-btn');
+    const textureSelect = document.getElementById('texture-select');
     const worldMapPanel = document.getElementById('world-map-panel');
     const openWorldMapBtn = document.getElementById('open-world-map-btn');
     const closeWorldMapBtn = document.getElementById('close-world-map-btn');
     const worldMapList = document.getElementById('world-map-list');
+
+    const viewToggle = document.getElementById('view-toggle');
+    const graphCanvas = document.getElementById('graph-canvas');
+    const toolbar = document.getElementById('toolbar');
+    const instructions = document.getElementById('instructions');
+    const renderDom = renderer.domElement;
 
     document.querySelectorAll('.tool-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -79,10 +86,18 @@ function initEditor() {
 
     // Textures & Materials
     const textureLoader = new THREE.TextureLoader();
-    const wallTexture = textureLoader.load('/ground.png');
-    wallTexture.wrapS = THREE.RepeatWrapping;
-    wallTexture.wrapT = THREE.RepeatWrapping;
-    const wallMaterial = new THREE.MeshLambertMaterial({ color: 0xdddddd, map: wallTexture });
+    const textureCache = {};
+
+    function getTextureMaterial(textureName) {
+        if (!textureCache[textureName]) {
+            const tex = textureLoader.load('/' + textureName);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            textureCache[textureName] = new THREE.MeshLambertMaterial({ color: 0xdddddd, map: tex });
+        }
+        return textureCache[textureName];
+    }
+
     const wallGeometry = new THREE.BoxGeometry(wallSize, wallHeight, wallSize);
 
     const npcMaterial = new THREE.MeshPhongMaterial({ color: 0x0088ff });
@@ -163,10 +178,11 @@ function initEditor() {
             let objData = { x: rx, z: rz, gridKey };
 
             if (currentTool === 'wall') {
-                mesh = new THREE.Mesh(wallGeometry, wallMaterial);
+                const selectedTex = textureSelect ? textureSelect.value : 'ground.png';
+                mesh = new THREE.Mesh(wallGeometry, getTextureMaterial(selectedTex));
                 mesh.position.set(rx * wallSize, wallHeight / 2, rz * wallSize);
                 objData.type = 'wall';
-                objData.texture = 'ground.png';
+                objData.texture = selectedTex;
             } else if (currentTool === 'npc') {
                 if (isDrag) return; // Don't spam prompt while dragging
                 mesh = new THREE.Mesh(npcGeometry, npcMaterial);
@@ -307,7 +323,8 @@ function initEditor() {
             mapData.objects.forEach(obj => {
                 let mesh = null;
                 if (obj.type === 'wall') {
-                    mesh = new THREE.Mesh(wallGeometry, wallMaterial);
+                    const tex = obj.texture || 'ground.png';
+                    mesh = new THREE.Mesh(wallGeometry, getTextureMaterial(tex));
                     mesh.position.set(obj.x * wallSize, wallHeight / 2, obj.z * wallSize);
                 } else if (obj.type === 'npc') {
                     mesh = new THREE.Mesh(npcGeometry, npcMaterial);
@@ -337,6 +354,10 @@ function initEditor() {
 
     function animate() {
         requestAnimationFrame(animate);
+        if (viewToggle && viewToggle.value === 'world') {
+            // Pause 3D rendering to save resources
+            return;
+        }
         controls.update();
         renderer.render(scene, camera);
     }
@@ -346,7 +367,177 @@ function initEditor() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        if (graphCanvas && viewToggle && viewToggle.value === 'world') {
+            graphCanvas.width = window.innerWidth;
+            graphCanvas.height = window.innerHeight;
+            drawNodeGraph(); // Redraw on resize
+        }
     });
+
+    // --- 2D Node Graph Logic ---
+    let worldGraphData = [];
+    let graphOffset = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let isDraggingGraph = false;
+    let dragStart = { x: 0, y: 0 };
+
+    if (viewToggle) {
+        viewToggle.addEventListener('change', async (e) => {
+            if (e.target.value === 'world') {
+                renderDom.style.display = 'none';
+                toolbar.style.display = 'none';
+                instructions.style.display = 'none';
+                graphCanvas.style.display = 'block';
+                graphCanvas.width = window.innerWidth;
+                graphCanvas.height = window.innerHeight;
+                await fetchFullWorldGraph();
+                drawNodeGraph();
+            } else {
+                renderDom.style.display = 'block';
+                toolbar.style.display = 'flex';
+                instructions.style.display = 'block';
+                graphCanvas.style.display = 'none';
+            }
+        });
+    }
+
+    async function fetchFullWorldGraph() {
+        try {
+            statusMsg.textContent = "Loading World Data...";
+            // We need the full DB to draw connections
+            const res = await fetch('/api/maps');
+            const list = await res.json();
+
+            // Fetch detailed JSON for every map to find its Exit nodes
+            const fetchPromises = list.map(m => fetch(`/api/maps/${m.id}`).then(r => r.json()));
+            const detailedMaps = await Promise.all(fetchPromises);
+
+            // Build the graph array layout
+            worldGraphData = [];
+
+            // Simple auto-layout algorithm for nodes
+            let currentX = 0;
+            let currentY = 0;
+            const spacing = 200;
+
+            detailedMaps.forEach((mapObj, index) => {
+                const data = mapObj.data || {};
+                const objects = data.objects || [];
+                const exits = objects.filter(o => o.type === 'exit' && o.targetMapId).map(o => o.targetMapId);
+
+                // Try to lay them out in a grid
+                const cols = Math.ceil(Math.sqrt(detailedMaps.length));
+                currentX = (index % cols) * spacing - ((cols * spacing) / 2);
+                currentY = Math.floor(index / cols) * spacing - ((cols * spacing) / 2);
+
+                worldGraphData.push({
+                    id: mapObj.id,
+                    name: mapObj.name,
+                    exits: exits,
+                    x: currentX,
+                    y: currentY
+                });
+            });
+            statusMsg.textContent = "";
+
+        } catch (err) {
+            console.error(err);
+            statusMsg.textContent = "Failed to load World Graph.";
+        }
+    }
+
+    function drawNodeGraph() {
+        if (!graphCanvas) return;
+        const ctx = graphCanvas.getContext('2d');
+        ctx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+
+        ctx.save();
+        ctx.translate(graphOffset.x, graphOffset.y);
+
+        // 1. Draw connecting lines between rooms
+        ctx.lineWidth = 2;
+        worldGraphData.forEach(node => {
+            node.exits.forEach(targetId => {
+                const targetNode = worldGraphData.find(n => n.id === targetId);
+                if (targetNode) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'rgba(0, 255, 136, 0.6)';
+                    // Draw line from center to center
+                    ctx.moveTo(node.x, node.y);
+                    ctx.lineTo(targetNode.x, targetNode.y);
+                    ctx.stroke();
+
+                    // Draw simple arrow head
+                    const angle = Math.atan2(targetNode.y - node.y, targetNode.x - node.x);
+                    ctx.beginPath();
+                    ctx.fillStyle = 'rgba(0, 255, 136, 0.9)';
+                    const arrowDist = 45; // Stop arrow at edge of box
+                    const arrowX = targetNode.x - Math.cos(angle) * arrowDist;
+                    const arrowY = targetNode.y - Math.sin(angle) * arrowDist;
+                    ctx.moveTo(arrowX, arrowY);
+                    ctx.lineTo(arrowX - 10 * Math.cos(angle - Math.PI / 6), arrowY - 10 * Math.sin(angle - Math.PI / 6));
+                    ctx.lineTo(arrowX - 10 * Math.cos(angle + Math.PI / 6), arrowY - 10 * Math.sin(angle + Math.PI / 6));
+                    ctx.fill();
+                }
+            });
+        });
+
+        // 2. Draw the Map Nodes (Boxes)
+        worldGraphData.forEach(node => {
+            const isCurrentMap = mapData.id && mapData.id === node.id;
+
+            ctx.fillStyle = isCurrentMap ? '#0066aa' : '#222233';
+            ctx.strokeStyle = isCurrentMap ? '#00aaff' : '#555566';
+            ctx.lineWidth = 3;
+
+            // Draw Box
+            ctx.beginPath();
+            ctx.roundRect(node.x - 60, node.y - 30, 120, 60, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw Text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Truncate long names
+            let displayName = node.name || "Untitled";
+            if (displayName.length > 15) displayName = displayName.substring(0, 13) + "...";
+            ctx.fillText(displayName, node.x, node.y - 5);
+
+            ctx.fillStyle = '#888';
+            ctx.font = '10px sans-serif';
+            ctx.fillText(`ID: ${node.id ? node.id.substring(0, 6) : 'N/A'}`, node.x, node.y + 12);
+        });
+
+        ctx.restore();
+    }
+
+    // Graph Canvas Interactions (Pan around)
+    if (graphCanvas) {
+        graphCanvas.addEventListener('mousedown', (e) => {
+            isDraggingGraph = true;
+            dragStart = { x: e.clientX, y: e.clientY };
+            graphCanvas.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDraggingGraph && viewToggle && viewToggle.value === 'world') {
+                const dx = e.clientX - dragStart.x;
+                const dy = e.clientY - dragStart.y;
+                graphOffset.x += dx;
+                graphOffset.y += dy;
+                dragStart = { x: e.clientX, y: e.clientY };
+                drawNodeGraph();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDraggingGraph = false;
+            if (graphCanvas) graphCanvas.style.cursor = 'grab';
+        });
+    }
 
 }
 if (document.readyState === 'loading') {

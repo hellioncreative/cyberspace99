@@ -40,12 +40,19 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
 directionalLight.position.set(5, 10, 7.5);
 scene.add(directionalLight);
 
-const groundTexture = textureLoader.load('/ground.png');
-groundTexture.wrapS = THREE.RepeatWrapping;
-groundTexture.wrapT = THREE.RepeatWrapping;
+const textureCache = {};
+function getTextureMaterial(textureName) {
+    if (!textureCache[textureName]) {
+        const tex = textureLoader.load('/' + textureName);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        textureCache[textureName] = new THREE.MeshStandardMaterial({ map: tex });
+    }
+    return textureCache[textureName];
+}
+
 const groundGeometry = new THREE.PlaneGeometry(100, 100);
-const groundMaterial = new THREE.MeshStandardMaterial({ map: groundTexture });
-const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+const ground = new THREE.Mesh(groundGeometry, getTextureMaterial('ground.png'));
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
@@ -219,9 +226,6 @@ async function loadLevel(levelIndex) {
 
         infoElement.textContent = `Joined Room: ${mapData.name} - Connect a gamepad and press a button.`;
 
-        const wallTexture = textureLoader.load('/ground.png');
-        wallTexture.wrapS = THREE.RepeatWrapping;
-        wallTexture.wrapT = THREE.RepeatWrapping;
         const wallGeometry = new THREE.BoxGeometry(wallSize, wallHeight, wallSize);
 
         // Spawn player at map spawn point
@@ -248,8 +252,8 @@ async function loadLevel(levelIndex) {
             const zPos = obj.z * wallSize;
 
             if (obj.type === 'wall') {
-                const wallMaterial = new THREE.MeshStandardMaterial({ map: wallTexture });
-                const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                const tex = obj.texture || 'ground.png';
+                const wall = new THREE.Mesh(wallGeometry, getTextureMaterial(tex));
                 wall.position.set(xPos, wallHeight / 2, zPos);
                 scene.add(wall);
                 wall.userData.box = new THREE.Box3().setFromObject(wall);

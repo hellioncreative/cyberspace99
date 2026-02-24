@@ -139,10 +139,20 @@
             <button id="load-btn"
                 style="background: #0088ff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Load</button>
         </div>
-        <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+        <div style="margin-left: auto; display: flex; gap: 15px; align-items: center;">
+            <div
+                style="background: #2a2a3a; padding: 5px; border-radius: 6px; border: 1px solid #445; display: flex; align-items: center;">
+                <label style="color: #bbb; margin: 0 10px; font-weight: bold; font-size: 14px;">View:</label>
+                <select id="view-toggle"
+                    style="background: #111; color: #0f0; border: 1px solid #0f0; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; outline: none;">
+                    <option value="area">Area (3D)</option>
+                    <option value="world">World (Graph)</option>
+                </select>
+            </div>
+
             <button id="open-world-map-btn"
                 style="background: #2a2a3a; color: white; border: 1px solid #445; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px;">🌍
-                World Map</button>
+                Teleport Hub</button>
             <label style="color: #bbb;">Name:</label>
             <input type="text" id="map-name" value="New Room" />
         </div>
@@ -150,7 +160,15 @@
         <div id="status-msg" style="color: #ff0; font-weight: bold; min-width: 150px;"></div>
     </div>
     <div id="toolbar">
-        <button class="tool-btn active" data-tool="wall">🧱 Wall</button>
+        <div style="display: flex; gap: 5px;">
+            <button class="tool-btn active" data-tool="wall" style="flex-grow: 1;">🧱 Wall</button>
+            <select id="texture-select"
+                style="background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 0 5px;">
+                <option value="ground.png">Default</option>
+                <option value="stone.png">Stone</option>
+                <option value="tech.png">Tech</option>
+            </select>
+        </div>
         <button class="tool-btn" data-tool="npc">🤖 NPC</button>
         <button class="tool-btn" data-tool="exit">🚪 Exit</button>
         <button class="tool-btn" data-tool="spawn">📍 Set Spawn</button>
@@ -165,7 +183,7 @@
     <div id="world-map-panel"
         style="display: none; position: absolute; top: 10%; left: 50%; transform: translateX(-50%); width: 80%; max-width: 600px; background: rgba(20, 20, 25, 0.95); border: 2px solid #556; border-radius: 12px; padding: 20px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.8); font-family: sans-serif;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="color: white; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">World Map</h2>
+            <h2 style="color: white; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Teleport Hub</h2>
             <button id="close-world-map-btn"
                 style="background: #ff4444; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Close</button>
         </div>
@@ -174,6 +192,10 @@
             <!-- Buttons injected by JS -->
         </div>
     </div>
+
+    <!-- 2D World Graph Canvas -->
+    <canvas id="graph-canvas"
+        style="display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 50; background: #1a1a24; cursor: grab;"></canvas>
 
     <script type="module" src="/src/editor.js"></script>
 </body>
