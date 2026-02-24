@@ -143,7 +143,46 @@ function initEditor() {
         }
     });
 
-    function paintOrErase(e, isDrag) {
+    // Custom Async Prompt to replace window.prompt()
+    function customPrompt(title, defaultValue = "") {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('text-prompt-modal');
+            const titleEl = document.getElementById('text-prompt-title');
+            const inputEl = document.getElementById('text-prompt-input');
+            const cancelBtn = document.getElementById('cancel-prompt-btn');
+            const submitBtn = document.getElementById('submit-prompt-btn');
+
+            if (!modal) {
+                resolve(prompt(title, defaultValue)); // Absolute fallback
+                return;
+            }
+
+            titleEl.textContent = title;
+            inputEl.value = defaultValue;
+            modal.style.display = 'flex';
+            inputEl.focus();
+
+            const cleanup = () => {
+                modal.style.display = 'none';
+                cancelBtn.removeEventListener('click', onCancel);
+                submitBtn.removeEventListener('click', onSubmit);
+                inputEl.removeEventListener('keydown', onKey);
+            };
+
+            const onCancel = () => { cleanup(); resolve(null); };
+            const onSubmit = () => { cleanup(); resolve(inputEl.value); };
+            const onKey = (e) => {
+                if (e.key === 'Enter') onSubmit();
+                if (e.key === 'Escape') onCancel();
+            };
+
+            cancelBtn.addEventListener('click', onCancel);
+            submitBtn.addEventListener('click', onSubmit);
+            inputEl.addEventListener('keydown', onKey);
+        });
+    }
+
+    async function paintOrErase(e, isDrag) {
         mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
@@ -193,14 +232,14 @@ function initEditor() {
                 mesh = new THREE.Mesh(npcGeometry, npcMaterial);
                 mesh.position.set(rx * wallSize, 0.5, rz * wallSize);
                 objData.type = 'npc';
-                objData.dialog = prompt("Enter NPC dialog:", "Hello!");
+                objData.dialog = await customPrompt("Enter NPC dialog:", "Hello!");
                 if (!objData.dialog) return; // Cancelled
             } else if (currentTool === 'exit') {
                 if (isDrag) return; // Exit setup might need a prompt later too
                 mesh = new THREE.Mesh(exitGeometry, exitMaterial);
                 mesh.position.set(rx * wallSize, 0.1, rz * wallSize);
                 objData.type = 'exit';
-                objData.targetMapId = prompt("Enter Target Room ID (UUID) for this exit:", "");
+                objData.targetMapId = await customPrompt("Enter Target Room ID (UUID) for this exit:", "");
                 if (!objData.targetMapId) return; // Cancelled
             }
 
