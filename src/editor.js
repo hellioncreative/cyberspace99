@@ -28,6 +28,11 @@ function initEditor() {
     const openWorldMapBtn = document.getElementById('open-world-map-btn');
     const closeWorldMapBtn = document.getElementById('close-world-map-btn');
     const worldMapList = document.getElementById('world-map-list');
+
+    // Custom Delete Modal Elements
+    const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+    const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
     const viewToggle = document.getElementById('view-toggle');
     const graphCanvas = document.getElementById('graph-canvas');
     const toolbar = document.getElementById('toolbar');
@@ -373,15 +378,28 @@ function initEditor() {
         }
     });
 
-    if (deleteBtn) deleteBtn.addEventListener('click', async (e) => {
+    if (deleteBtn) deleteBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+
         const id = mapSelect.value;
         if (!id) return;
 
-        if (!confirm("Are you sure you want to permanently delete this map? This cannot be undone.")) {
-            return;
+        // Show custom modal instead of window.confirm
+        if (deleteConfirmModal) {
+            deleteConfirmModal.style.display = 'flex';
         }
+    });
+
+    if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', () => {
+        if (deleteConfirmModal) deleteConfirmModal.style.display = 'none';
+    });
+
+    if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', async () => {
+        const id = mapSelect.value;
+        if (!id) return;
+
+        if (deleteConfirmModal) deleteConfirmModal.style.display = 'none';
 
         try {
             statusMsg.textContent = "Deleting map...";
