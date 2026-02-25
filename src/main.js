@@ -295,52 +295,6 @@ async function loadWorld() {
                 lobbyFound = true;
                 lobbySpawnX = globalSpawnX;
                 lobbySpawnZ = globalSpawnZ;
-
-                // Pathfinding for random lobby spawn (Flood Fill)
-                const occupied = new Set();
-                mapData.objects.forEach(obj => {
-                    occupied.add(`${obj.x},${obj.z}`);
-                });
-
-                const startNode = { x: mapData.spawn.x, z: mapData.spawn.z };
-                const queue = [startNode];
-                const visited = new Set([`${startNode.x},${startNode.z}`]);
-                const validSpawnTiles = [startNode];
-
-                // Directions: Up, Right, Down, Left
-                const directions = [{ dx: 0, dz: -1 }, { dx: 1, dz: 0 }, { dx: 0, dz: 1 }, { dx: -1, dz: 0 }];
-
-                // Cap the flood fill to prevent infinite loops if the Lobby is missing walls
-                const MAX_FILL = 500;
-                let fillCount = 0;
-
-                while (queue.length > 0 && fillCount < MAX_FILL) {
-                    const current = queue.shift();
-                    fillCount++;
-
-                    for (const dir of directions) {
-                        const nextX = current.x + dir.dx;
-                        const nextZ = current.z + dir.dz;
-                        const posKey = `${nextX},${nextZ}`;
-
-                        if (!visited.has(posKey)) {
-                            visited.add(posKey);
-
-                            // If it's not a wall, it's a valid empty floor tile
-                            if (!occupied.has(posKey)) {
-                                const nextNode = { x: nextX, z: nextZ };
-                                validSpawnTiles.push(nextNode);
-                                queue.push(nextNode); // Only continue propagating through air
-                            }
-                        }
-                    }
-                }
-
-                if (validSpawnTiles.length > 0) {
-                    const randomTile = validSpawnTiles[Math.floor(Math.random() * validSpawnTiles.length)];
-                    lobbySpawnX = roomOffsetX + (randomTile.x * wallSize);
-                    lobbySpawnZ = roomOffsetZ + (randomTile.z * wallSize);
-                }
             }
 
             // Spawn Room Objects into absolute world space
