@@ -223,9 +223,12 @@ async function loadLevel(levelIndex) {
             return;
         }
         const dbRow = await response.json();
-        const mapData = dbRow.data || { spawn: null, objects: [] };
+
+        const mapData = {};
         mapData.name = dbRow.name || "Untitled";
         mapData.id = dbRow.id || levelIndex;
+        mapData.spawn = dbRow.data?.spawn || dbRow.spawn || { x: 0, z: 2 };
+        mapData.objects = dbRow.data?.objects || dbRow.objects || [];
 
         infoElement.textContent = `Joined Room: ${mapData.name} - Connect a gamepad and press a button.`;
 
@@ -235,8 +238,35 @@ async function loadLevel(levelIndex) {
         if (model && mapData.spawn) {
             if (!scene.children.includes(model)) scene.add(model);
 
-            const spawnX = mapData.spawn.x * wallSize;
-            const spawnZ = mapData.spawn.z * wallSize;
+            let spawnX = mapData.spawn.x * wallSize;
+            let spawnZ = mapData.spawn.z * wallSize;
+
+            if (mapData.name.toLowerCase() === 'lobby') {
+                let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+                const occupied = new Set();
+                mapData.objects.forEach(obj => {
+                    if (obj.x < minX) minX = obj.x;
+                    if (obj.x > maxX) maxX = obj.x;
+                    if (obj.z < minZ) minZ = obj.z;
+                    if (obj.z > maxZ) maxZ = obj.z;
+                    occupied.add(`${obj.x},${obj.z}`);
+                });
+
+                const emptyTiles = [];
+                for (let x = minX + 1; x < maxX; x++) {
+                    for (let z = minZ + 1; z < maxZ; z++) {
+                        if (!occupied.has(`${x},${z}`)) {
+                            emptyTiles.push({ x, z });
+                        }
+                    }
+                }
+
+                if (emptyTiles.length > 0) {
+                    const randomTile = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
+                    spawnX = randomTile.x * wallSize;
+                    spawnZ = randomTile.z * wallSize;
+                }
+            }
 
             model.position.set(spawnX, 0, spawnZ);
 
