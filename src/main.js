@@ -10,6 +10,7 @@ let playerName = "";
 const loginScreen = document.getElementById('login-screen');
 const gameUi = document.getElementById('game-ui');
 const usernameInput = document.getElementById('username-input');
+const colorPicker = document.getElementById('color-picker');
 const joinBtn = document.getElementById('join-btn');
 const chatInput = document.getElementById('chat-input');
 const chatMessages = document.getElementById('chat-messages');
@@ -81,11 +82,17 @@ const startChars = ['^', '>', 'v', '<'];
 // Only start game after login
 joinBtn.addEventListener('click', () => {
     const name = usernameInput.value.trim();
+    const color = colorPicker.value;
     if (name) {
         playerName = name;
         loginScreen.style.display = 'none';
         gameUi.style.display = 'block';
-        socket.emit('join', playerName);
+        socket.emit('join', { name: playerName, color: color });
+
+        if (model) {
+            tintGhost(model, color);
+        }
+
         loadWorld();
     }
 });
@@ -98,12 +105,30 @@ usernameInput.addEventListener('keypress', (e) => {
 
 let gltfModelTemplate = null;
 
+function tintGhost(targetModel, hexColor) {
+    if (!targetModel) return;
+    targetModel.traverse((child) => {
+        if (child.isMesh) {
+            child.material = child.material.clone(); // Un-share material
+            child.material.color.setHex(0x000000); // Base black
+            child.material.emissive.set(hexColor); // Glowing tint
+            child.material.emissiveIntensity = 0.5;
+        }
+    });
+}
+
 const loader = new GLTFLoader();
 loader.load('/ghost.gltf', (gltf) => {
     gltfModelTemplate = gltf;
     model = gltf.scene;
     // Don't add to scene until we enter a level
     model.scale.set(0.8, 0.8, 0.8);
+
+    // If player logged in before the model finished loading
+    if (playerName) {
+        tintGhost(model, colorPicker.value);
+    }
+
     mixer = new THREE.AnimationMixer(model);
     if (gltf.animations.length > 0) mixer.clipAction(gltf.animations[0]).play();
 }, undefined, (error) => {
@@ -119,6 +144,9 @@ function addOtherPlayer(playerInfo) {
     clonedScene.position.set(playerInfo.pos[0], playerInfo.pos[1], playerInfo.pos[2]);
     clonedScene.quaternion.set(playerInfo.rot[0], playerInfo.rot[1], playerInfo.rot[2], playerInfo.rot[3]);
     clonedScene.scale.set(0.8, 0.8, 0.8);
+
+    // Tint the remote ghost
+    tintGhost(clonedScene, playerInfo.color || '#ffffff');
 
     // Add nametag
     const canvas = document.createElement('canvas');
@@ -250,10 +278,7 @@ socket.on('chatMessage', (data) => {
     });
 });
 
-socket.on('chatHistory', (messages) => {
-    // We intentionally ignore DB chat history for 3D proximity chat, 
-    // as it only makes sense for real-time localized conversations!
-});
+
 
 // Map Global Coordinates for Teleports
 const worldSpawns = {};
@@ -274,7 +299,15 @@ async function loadWorld() {
             return;
         }
 
-        const maps = await response.json();
+        let maps = await response.json();
+
+        // Ensure Lobby is seeded if the database is completely empty or missing it
+        const hasLobby = maps.some(m => m.name && m.name.toLowerCase() === 'lobby');
+        if (!hasLobby) {
+            await fetch('/api/maps/Lobby');
+            const retryRes = await fetch(`/api/world`);
+            if (retryRes.ok) maps = await retryRes.json();
+        }
         const wallGeometry = new THREE.BoxGeometry(wallSize, wallHeight, wallSize);
 
         infoElement.textContent = `Continuous World Loaded - ${maps.length} region(s) connected.`;
@@ -727,22 +760,7 @@ function animate() {
         }
     }
 
-    // Floating Chat Bar tracking beneath the local player
-    const inputEl = document.getElementById('chat-input');
-    const containerEl = document.getElementById('chat-container');
-    if (model && inputEl && inputEl.classList.contains('active')) {
-        const inputPos = model.position.clone();
 
-        // Project local player base to screen space
-        const v = inputPos.project(camera);
-        if (v.z < 1) {
-            const x = (v.x * 0.5 + 0.5) * window.innerWidth;
-            const y = -(v.y * 0.5 - 0.5) * window.innerHeight;
-
-            containerEl.style.left = `${x}px`;
-            containerEl.style.top = `${y}px`;
-        }
-    }
 
     renderer.render(scene, camera);
 }

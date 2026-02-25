@@ -5,7 +5,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Web 3D Virtual World</title>
-    <script type="module" crossorigin src="/src/main.js"></script>
+  <script type="module" crossorigin src="/assets/main-Bap6xija.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/three.module-RKOeY79p.js">
+  <link rel="stylesheet" crossorigin href="/assets/three-DSYXhUD5.css">
 </head>
 
 <body>
@@ -15,6 +17,13 @@
             <h1>CYBERSPACE99</h1>
             <p>Enter your username to join the realm.</p>
             <input type="text" id="username-input" placeholder="Username" maxlength="15" autocomplete="off" />
+            <div
+                style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; background: #222; padding: 10px; border-radius: 6px; border: 2px solid #555;">
+                <label for="color-picker" style="font-family: 'Unispace', monospace; font-size: 16px;">Ghost
+                    Color:</label>
+                <input type="color" id="color-picker" value="#ffffff"
+                    style="cursor: pointer; width: 50px; height: 35px; border: none; background: transparent; padding: 0;" />
+            </div>
             <button id="join-btn">ENTER</button>
         </div>
     </div>

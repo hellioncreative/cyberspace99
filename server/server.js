@@ -201,10 +201,14 @@ const players = {};
 io.on('connection', (socket) => {
     console.log('Player connected:', socket.id);
 
-    socket.on('join', async (name) => {
+    socket.on('join', async (data) => {
+        const playerName = typeof data === 'string' ? data : data.name;
+        const playerColor = typeof data === 'object' && data.color ? data.color : '#ffffff';
+
         players[socket.id] = {
             id: socket.id,
-            name: name,
+            name: playerName,
+            color: playerColor,
             pos: [0, 0, 0],
             rot: [0, 0, 0, 1]
         };
@@ -215,17 +219,7 @@ io.on('connection', (socket) => {
         // Tell everyone else about the new player
         socket.broadcast.emit('playerJoined', players[socket.id]);
 
-        // Fetch and send last 50 chat messages
-        const { data: messages, error } = await supabase
-            .from('messages')
-            .select('name, text')
-            .order('created_at', { ascending: false })
-            .limit(50);
 
-        if (!error && messages) {
-            // Reverse so chronological order
-            socket.emit('chatHistory', messages.reverse());
-        }
     });
 
     socket.on('playerMove', (data) => {
