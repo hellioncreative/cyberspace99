@@ -188,13 +188,20 @@ const activeChatBubbles = []; // Tracks localized 3D bubbles
 chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && playerName) {
         const text = chatInput.value.trim();
-        if (text) socket.emit('chatMessage', text);
-
-        chatInput.value = '';
-        chatInput.blur();
-        chatInput.classList.remove('active');
-        e.preventDefault(); // Prevent accidental line breaks
-        e.stopPropagation(); // Prevent bubbling up to window interact
+        if (text) {
+            // Send message but keep chat open
+            socket.emit('chatMessage', text);
+            chatInput.value = '';
+            e.preventDefault();
+            e.stopPropagation();
+        } else {
+            // Empty enter closes the chat
+            chatInput.value = '';
+            chatInput.blur();
+            chatInput.classList.remove('active');
+            e.preventDefault(); // Prevent accidental line breaks
+            e.stopPropagation(); // Prevent bubbling up to window interact
+        }
     }
 });
 
