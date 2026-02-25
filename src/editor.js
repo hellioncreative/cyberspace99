@@ -283,6 +283,13 @@ function initEditor() {
                 mesh.position.set(rx * wallSize, wallHeight / 2, rz * wallSize);
                 objData.type = 'wall';
                 objData.texture = selectedTex;
+            } else if (currentTool === 'ceiling') {
+                const selectedTex = textureSelect ? textureSelect.value : 'ground.png';
+                const ceilingGeometry = new THREE.BoxGeometry(wallSize, 0.2, wallSize);
+                mesh = new THREE.Mesh(ceilingGeometry, getTextureMaterial(selectedTex));
+                mesh.position.set(rx * wallSize, wallHeight, rz * wallSize);
+                objData.type = 'ceiling';
+                objData.texture = selectedTex;
             } else if (currentTool === 'npc') {
                 if (isDrag) return; // Don't spam prompt while dragging
                 mesh = new THREE.Mesh(npcGeometry, npcMaterial);
@@ -453,6 +460,11 @@ function initEditor() {
                     const tex = obj.texture || 'ground.png';
                     mesh = new THREE.Mesh(wallGeometry, getTextureMaterial(tex));
                     mesh.position.set(obj.x * wallSize, wallHeight / 2, obj.z * wallSize);
+                } else if (obj.type === 'ceiling') {
+                    const tex = obj.texture || 'ground.png';
+                    const ceilingGeometry = new THREE.BoxGeometry(wallSize, 0.2, wallSize);
+                    mesh = new THREE.Mesh(ceilingGeometry, getTextureMaterial(tex));
+                    mesh.position.set(obj.x * wallSize, wallHeight, obj.z * wallSize);
                 } else if (obj.type === 'npc') {
                     mesh = new THREE.Mesh(npcGeometry, npcMaterial);
                     mesh.position.set(obj.x * wallSize, 0.5, obj.z * wallSize);

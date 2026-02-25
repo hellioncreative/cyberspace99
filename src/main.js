@@ -355,6 +355,14 @@ async function loadWorld() {
                     scene.add(wall);
                     wall.userData.box = new THREE.Box3().setFromObject(wall);
                     mazeWalls.push(wall);
+                } else if (obj.type === 'ceiling') {
+                    // Elevated identical to editor rendering
+                    const tex = obj.texture || 'ground.png';
+                    const ceilingGeometry = new THREE.BoxGeometry(wallSize, 0.2, wallSize);
+                    const ceiling = new THREE.Mesh(ceilingGeometry, getTextureMaterial(tex));
+                    ceiling.position.set(xPos, wallHeight, zPos);
+                    scene.add(ceiling);
+                    // Ceilings are intangible, no Box3 collision data necessary
                 } else if (obj.type === 'exit') {
                     const exitGeometry = new THREE.BoxGeometry(wallSize * 0.8, 0.2, wallSize * 0.8);
                     const exitMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, emissive: 0xcccc00 });
