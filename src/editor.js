@@ -439,8 +439,8 @@ function initEditor() {
 
             mapData.id = data.id || id;
             mapData.name = data.name || "Untitled";
-            mapData.spawn = data.data?.spawn || { x: 0, z: 0 };
-            mapData.objects = data.data?.objects || [];
+            mapData.spawn = data.data?.spawn || data.spawn || { x: 0, z: 0 };
+            mapData.objects = data.data?.objects || data.objects || [];
             if (mapNameInput) mapNameInput.value = mapData.name;
             if (deleteBtn) deleteBtn.style.display = 'inline-block';
 
