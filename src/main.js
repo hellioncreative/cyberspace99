@@ -231,7 +231,7 @@ socket.on('chatMessage', (data) => {
     // Create new floating HTML bubble
     const bubbleEl = document.createElement('div');
     bubbleEl.className = 'chat-bubble';
-    bubbleEl.innerHTML = `<strong>${data.name}</strong><br/>${data.text}`;
+    bubbleEl.innerHTML = `<strong style="color: #ff3333; font-size: 1.1em;">${data.name}</strong><hr style="margin: 5px 0; border: none; border-top: 2px solid #ddd;" />${data.text}`;
     document.getElementById('game-ui').appendChild(bubbleEl);
 
     activeChatBubbles.push({
@@ -676,11 +676,11 @@ function animate() {
         }
 
         if (model && bubble.model) {
-            // Target the space right above the player's head
-            const headPosition = bubble.model.position.clone();
-            headPosition.y += 2.2;
+            // Target the space directly below the player
+            // The model.position.clone() gets the base of the model (the feet, typically y=0 for grounded models)
+            const basePosition = bubble.model.position.clone();
 
-            const distance = headPosition.distanceTo(model.position);
+            const distance = basePosition.distanceTo(model.position);
 
             if (distance > 30) {
                 // Too far to see
@@ -699,7 +699,7 @@ function animate() {
                 }
 
                 // Project 3D coordinate to 2D HTML Screen space
-                const vector = headPosition.project(camera);
+                const vector = basePosition.project(camera);
 
                 // Only render if within the camera's forward view frustum (z < 1)
                 if (vector.z < 1) {
@@ -708,7 +708,7 @@ function animate() {
 
                     bubble.element.style.left = `${x}px`;
                     bubble.element.style.top = `${y}px`;
-                    bubble.element.style.transform = `translate(-50%, -100%) scale(${scale})`;
+                    bubble.element.style.transform = `translate(-50%, 15px) scale(${scale})`;
                     bubble.element.style.filter = `blur(${blur}px)`;
                     bubble.element.style.opacity = opacity.toString();
                 } else {
