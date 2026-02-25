@@ -82,7 +82,7 @@ joinBtn.addEventListener('click', () => {
         loginScreen.style.display = 'none';
         gameUi.style.display = 'block';
         socket.emit('join', playerName);
-        loadLevel(currentLevel);
+        loadWorld();
     }
 });
 
@@ -208,7 +208,10 @@ socket.on('chatHistory', (messages) => {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
-async function loadLevel(levelIndex) {
+// Map Global Coordinates for Teleports
+const worldSpawns = {};
+
+async function loadWorld() {
     mazeWalls.forEach(wall => scene.remove(wall));
     mazeWalls = [];
     npcs.forEach(npc => scene.remove(npc));
@@ -217,31 +220,55 @@ async function loadLevel(levelIndex) {
     exitTiles = [];
 
     try {
-        const response = await fetch(`/api/maps/${levelIndex}`);
+        const response = await fetch(`/api/world`);
         if (!response.ok) {
-            infoElement.textContent = `You beat the game! No map found.`;
+            infoElement.textContent = `Error fetching world data.`;
             return;
         }
-        const dbRow = await response.json();
 
-        const mapData = {};
-        mapData.name = dbRow.name || "Untitled";
-        mapData.id = dbRow.id || levelIndex;
-        mapData.spawn = dbRow.data?.spawn || dbRow.spawn || { x: 0, z: 2 };
-        mapData.objects = dbRow.data?.objects || dbRow.objects || [];
-
-        infoElement.textContent = `Joined Room: ${mapData.name} - Connect a gamepad and press a button.`;
-
+        const maps = await response.json();
         const wallGeometry = new THREE.BoxGeometry(wallSize, wallHeight, wallSize);
 
-        // Spawn player at map spawn point
-        if (model && mapData.spawn) {
-            if (!scene.children.includes(model)) scene.add(model);
+        infoElement.textContent = `Continuous World Loaded - ${maps.length} region(s) connected.`;
 
-            let spawnX = mapData.spawn.x * wallSize;
-            let spawnZ = mapData.spawn.z * wallSize;
+        let lobbySpawnX = 0;
+        let lobbySpawnZ = 0;
+        let lobbyFound = false;
 
-            if (mapData.name.toLowerCase() === 'lobby') {
+        maps.forEach((mapObj, index) => {
+            const mapData = mapObj.data || { spawn: null, objects: [] };
+            mapData.objects = mapData.objects || [];
+            mapData.spawn = mapData.spawn || { x: 0, z: 2 };
+
+            // Absolute Chunk Positioning System
+            let currentX = mapObj.graph_x;
+            let currentY = mapObj.graph_y;
+
+            if (currentX === null || currentX === undefined || currentY === null || currentY === undefined) {
+                // Auto-layout fallback for rooms without graph coordinates
+                const cols = Math.ceil(Math.sqrt(maps.length));
+                currentX = (index % cols) * 200 - ((cols * 200) / 2);
+                currentY = Math.floor(index / cols) * 200 - ((cols * 200) / 2);
+            }
+
+            // Scale factor to map Editor Pixels (120x60 grid) cleanly to 3D World Units (48x48)
+            const WORLD_SCALE_X = 0.4;
+            const WORLD_SCALE_Z = 0.8;
+
+            const roomOffsetX = currentX * WORLD_SCALE_X;
+            const roomOffsetZ = currentY * WORLD_SCALE_Z;
+
+            // Save global spawn for teleports
+            const globalSpawnX = roomOffsetX + (mapData.spawn.x * wallSize);
+            const globalSpawnZ = roomOffsetZ + (mapData.spawn.z * wallSize);
+            worldSpawns[mapObj.id] = { x: globalSpawnX, z: globalSpawnZ };
+
+            if (mapObj.name && mapObj.name.toLowerCase() === 'lobby') {
+                lobbyFound = true;
+                lobbySpawnX = globalSpawnX;
+                lobbySpawnZ = globalSpawnZ;
+
+                // Pathfinding for random lobby spawn
                 let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
                 const occupied = new Set();
                 mapData.objects.forEach(obj => {
@@ -263,14 +290,51 @@ async function loadLevel(levelIndex) {
 
                 if (emptyTiles.length > 0) {
                     const randomTile = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
-                    spawnX = randomTile.x * wallSize;
-                    spawnZ = randomTile.z * wallSize;
+                    lobbySpawnX = roomOffsetX + (randomTile.x * wallSize);
+                    lobbySpawnZ = roomOffsetZ + (randomTile.z * wallSize);
                 }
             }
 
-            model.position.set(spawnX, 0, spawnZ);
+            // Spawn Room Objects into absolute world space
+            mapData.objects.forEach(obj => {
+                const xPos = roomOffsetX + (obj.x * wallSize);
+                const zPos = roomOffsetZ + (obj.z * wallSize);
 
-            // Default look north
+                if (obj.type === 'wall') {
+                    const tex = obj.texture || 'ground.png';
+                    const wall = new THREE.Mesh(wallGeometry, getTextureMaterial(tex));
+                    wall.position.set(xPos, wallHeight / 2, zPos);
+                    scene.add(wall);
+                    wall.userData.box = new THREE.Box3().setFromObject(wall);
+                    mazeWalls.push(wall);
+                } else if (obj.type === 'exit') {
+                    const exitGeometry = new THREE.BoxGeometry(wallSize * 0.8, 0.2, wallSize * 0.8);
+                    const exitMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, emissive: 0xcccc00 });
+                    const et = new THREE.Mesh(exitGeometry, exitMaterial);
+                    et.position.set(xPos, 0.1, zPos);
+                    et.userData.box = new THREE.Box3().setFromObject(et);
+                    et.userData.targetMapId = obj.targetMapId;
+                    scene.add(et);
+                    exitTiles.push(et);
+                } else if (obj.type === 'npc') {
+                    const npcGeometry = new THREE.SphereGeometry(0.5, 32, 16);
+                    const npcMaterial = new THREE.MeshPhongMaterial({ color: 0x0088ff, emissive: 0x0055aa });
+                    const npc = new THREE.Mesh(npcGeometry, npcMaterial);
+                    npc.position.set(xPos, 0.5, zPos);
+                    npc.name = obj.name || "Friendly Spirit";
+                    npc.interactionMessage = obj.dialog || "Welcome!";
+                    npc.radius = 0.5;
+                    scene.add(npc);
+                    npcs.push(npc);
+                }
+            });
+        }); // End map iteration
+
+        // Move Player to Lobby (or 0,0)
+        if (model) {
+            if (!scene.children.includes(model)) scene.add(model);
+            model.position.set(lobbySpawnX, 0, lobbySpawnZ);
+
             const startRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
             model.quaternion.copy(startRotation);
 
@@ -280,78 +344,11 @@ async function loadLevel(levelIndex) {
             });
         }
 
-        mapData.objects.forEach(obj => {
-            const xPos = obj.x * wallSize;
-            const zPos = obj.z * wallSize;
-
-            if (obj.type === 'wall') {
-                const tex = obj.texture || 'ground.png';
-                const wall = new THREE.Mesh(wallGeometry, getTextureMaterial(tex));
-                wall.position.set(xPos, wallHeight / 2, zPos);
-                scene.add(wall);
-                wall.userData.box = new THREE.Box3().setFromObject(wall);
-                mazeWalls.push(wall);
-            } else if (obj.type === 'exit') {
-                const exitGeometry = new THREE.BoxGeometry(wallSize * 0.8, 0.2, wallSize * 0.8);
-                const exitMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, emissive: 0xcccc00 });
-                const et = new THREE.Mesh(exitGeometry, exitMaterial);
-                et.position.set(xPos, 0.1, zPos);
-                et.userData.box = new THREE.Box3().setFromObject(et);
-                et.userData.targetMapId = obj.targetMapId;
-                scene.add(et);
-                exitTiles.push(et);
-            } else if (obj.type === 'npc') {
-                const npcGeometry = new THREE.SphereGeometry(0.5, 32, 16);
-                const npcMaterial = new THREE.MeshPhongMaterial({ color: 0x0088ff, emissive: 0x0055aa });
-                const npc = new THREE.Mesh(npcGeometry, npcMaterial);
-                npc.position.set(xPos, 0.5, zPos);
-                npc.name = obj.name || "Friendly Spirit";
-                npc.interactionMessage = obj.dialog || "Welcome!";
-                npc.radius = 0.5;
-                scene.add(npc);
-                npcs.push(npc);
-            }
-        });
-
     } catch (error) {
-        console.error("Error loading map:", error);
-        infoElement.textContent = `Error loading room. Check console.`;
+        console.error("Error loading world:", error);
+        infoElement.textContent = `Error assembling continuous world. Check console.`;
     }
 }
-
-// World Map List Logic
-openWorldMapBtn.addEventListener('click', async () => {
-    worldMapPanel.style.display = 'block';
-    worldMapList.innerHTML = '<div style="text-align:center; color:#888;">Scanning network...</div>';
-
-    try {
-        const res = await fetch('/api/maps');
-        const maps = await res.json();
-
-        worldMapList.innerHTML = '';
-        if (!maps || maps.length === 0) {
-            worldMapList.innerHTML = '<div style="text-align:center; color:#888;">No rooms available.</div>';
-            return;
-        }
-
-        maps.forEach(m => {
-            const btn = document.createElement('button');
-            btn.textContent = m.name || "Untitled Room";
-            btn.style = "background: #2a2a3a; color: white; padding: 14px; border: 1px solid #445; border-radius: 6px; cursor: pointer; text-align: left; transition: all 0.2s; font-weight: bold; font-size: 16px;";
-            btn.onmouseover = () => { btn.style.background = "#3a3a4a"; btn.style.borderColor = "#00aaff"; };
-            btn.onmouseout = () => { btn.style.background = "#2a2a3a"; btn.style.borderColor = "#445"; };
-            btn.onclick = () => {
-                worldMapPanel.style.display = 'none';
-                currentLevel = m.id;
-                loadLevel(m.id);
-            };
-            worldMapList.appendChild(btn);
-        });
-    } catch (e) {
-        console.error(e);
-        worldMapList.innerHTML = '<div style="text-align:center; color:#ff4444;">Connection failed.</div>';
-    }
-});
 
 closeWorldMapBtn.addEventListener('click', () => {
     worldMapPanel.style.display = 'none';
@@ -501,13 +498,16 @@ function animate() {
                 for (let i = 0; i < exitTiles.length; i++) {
                     const et = exitTiles[i];
                     if (playerBox.intersectsBox(et.userData.box)) {
-                        if (et.userData.targetMapId) {
-                            currentLevel = et.userData.targetMapId;
-                            loadLevel(currentLevel);
-                        } else {
-                            // Fallback logic
-                            currentLevel = 'lobby';
-                            loadLevel(currentLevel);
+                        const targetId = et.userData.targetMapId || 'lobby';
+                        const spawnCoord = worldSpawns[targetId] || worldSpawns['lobby'];
+                        if (spawnCoord) {
+                            model.position.set(spawnCoord.x, 0, spawnCoord.z);
+
+                            // Broadcast instant exact teleportation position
+                            socket.emit('playerMove', {
+                                pos: [model.position.x, 0, model.position.z],
+                                rot: [model.quaternion.x, model.quaternion.y, model.quaternion.z, model.quaternion.w]
+                            });
                         }
                         break;
                     }

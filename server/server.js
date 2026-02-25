@@ -42,6 +42,19 @@ app.get('/api/maps', async (req, res) => {
     res.json(data);
 });
 
+// Fetch complete geometry for Continuous World
+app.get('/api/world', async (req, res) => {
+    const { data, error } = await supabase
+        .from('maps')
+        .select('id, name, data, graph_x, graph_y');
+
+    if (error) {
+        console.error("Error fetching world:", error);
+        return res.status(500).json({ error: error.message });
+    }
+    res.json(data);
+});
+
 app.get('/api/maps/:id', async (req, res) => {
     const isLobby = req.params.id.toLowerCase() === 'lobby';
 
