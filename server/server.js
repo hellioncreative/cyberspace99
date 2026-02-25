@@ -242,7 +242,7 @@ io.on('connection', (socket) => {
             const playerName = players[socket.id].name;
 
             // Broadcast immediately for low latency feeling
-            io.emit('chatMessage', { name: playerName, text: msg });
+            io.emit('chatMessage', { id: socket.id, name: playerName, text: msg });
 
             // Persist to DB
             await supabase.from('messages').insert([

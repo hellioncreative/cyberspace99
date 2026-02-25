@@ -154,41 +154,62 @@ canvas {
 }
 
 #chat-messages {
-    flex-grow: 1;
-    overflow-y: auto;
-    margin-bottom: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
-    font-family: sans-serif;
-    font-size: 14px;
-    font-weight: bold;
-}
-
-.chat-msg {
-    color: white;
-}
-
-.chat-msg span.author {
-    color: #4CAF50;
+    display: none !important;
 }
 
 #chat-input {
     pointer-events: auto;
     width: 100%;
-    padding: 8px;
+    padding: 12px 15px;
     font-family: sans-serif;
-    font-size: 14px;
-    background: rgba(0, 0, 0, 0.6);
+    font-size: 16px;
+    background: rgba(0, 0, 0, 0.85);
     color: white;
-    border: 1px solid #555;
+    border: 2px solid #00aaff;
     outline: none;
     box-sizing: border-box;
-    border-radius: 4px;
+    border-radius: 20px;
+    box-shadow: 0 0 15px rgba(0, 170, 255, 0.5);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.2s, transform 0.2s;
+    visibility: hidden;
 }
 
-#chat-input:focus {
-    background: rgba(0, 0, 0, 0.8);
-    border-color: #4CAF50;
+#chat-input.active {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+}
+
+/* Spatial Chat Bubbles */
+.chat-bubble {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.95);
+    color: black;
+    padding: 10px 15px;
+    border-radius: 20px;
+    font-family: sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    pointer-events: none;
+    transform: translate(-50%, -100%);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+    max-width: 250px;
+    word-wrap: break-word;
+    text-align: center;
+    z-index: 100;
+    transition: filter 0.1s linear, opacity 0.1s linear, transform 0.1s linear;
+    will-change: transform, filter, opacity;
+}
+
+.chat-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 10px 10px 0;
+    border-style: solid;
+    border-color: rgba(255, 255, 255, 0.95) transparent transparent transparent;
 }

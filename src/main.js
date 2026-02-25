@@ -183,33 +183,68 @@ socket.on('playerMoved', (playerInfo) => {
 });
 
 // Chat Logic
-chatInput.addEventListener('keypress', (e) => {
-    // Only send if we are logged in
+const activeChatBubbles = []; // Tracks localized 3D bubbles
+
+chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && playerName) {
         const text = chatInput.value.trim();
-        if (text) {
-            socket.emit('chatMessage', text);
-            chatInput.value = '';
+        if (text) socket.emit('chatMessage', text);
+
+        chatInput.value = '';
+        chatInput.blur();
+        chatInput.classList.remove('active');
+        e.preventDefault(); // Prevent accidental line breaks
+    }
+});
+
+// Global interact to open chat bar
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && playerName) {
+        if (!chatInput.classList.contains('active')) {
+            chatInput.classList.add('active');
+            chatInput.focus();
+            e.preventDefault();
         }
     }
 });
 
 socket.on('chatMessage', (data) => {
-    const msgEl = document.createElement('div');
-    msgEl.className = 'chat-msg';
-    msgEl.innerHTML = `<span class="author">${data.name}:</span> ${data.text}`;
-    chatMessages.appendChild(msgEl);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    let speakerModel = null;
+    if (data.id === socket.id) {
+        speakerModel = model; // Local player
+    } else if (players[data.id]) {
+        speakerModel = players[data.id]; // Remote player
+    }
+
+    if (!speakerModel) return;
+
+    // Clear existing bubble for this player (so they only have 1 active bubble)
+    const existingIndex = activeChatBubbles.findIndex(b => b.id === data.id);
+    if (existingIndex !== -1) {
+        const oldBubble = activeChatBubbles[existingIndex];
+        if (oldBubble.element && oldBubble.element.parentNode) {
+            oldBubble.element.parentNode.removeChild(oldBubble.element);
+        }
+        activeChatBubbles.splice(existingIndex, 1);
+    }
+
+    // Create new floating HTML bubble
+    const bubbleEl = document.createElement('div');
+    bubbleEl.className = 'chat-bubble';
+    bubbleEl.innerHTML = `<strong>${data.name}</strong><br/>${data.text}`;
+    document.getElementById('game-ui').appendChild(bubbleEl);
+
+    activeChatBubbles.push({
+        id: data.id,
+        element: bubbleEl,
+        model: speakerModel,
+        timestamp: Date.now()
+    });
 });
 
 socket.on('chatHistory', (messages) => {
-    messages.forEach(data => {
-        const msgEl = document.createElement('div');
-        msgEl.className = 'chat-msg';
-        msgEl.innerHTML = `<span class="author">${data.name}:</span> ${data.text}`;
-        chatMessages.appendChild(msgEl);
-    });
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    // We intentionally ignore DB chat history for 3D proximity chat, 
+    // as it only makes sense for real-time localized conversations!
 });
 
 // Map Global Coordinates for Teleports
@@ -620,6 +655,63 @@ function animate() {
 
         camera.position.copy(finalCameraPos);
         camera.lookAt(targetPosition);
+    }
+
+    // Update Spatial Chat Bubbles
+    const now = Date.now();
+    for (let i = activeChatBubbles.length - 1; i >= 0; i--) {
+        const bubble = activeChatBubbles[i];
+
+        // Remove bubbles after 8 seconds
+        if (now - bubble.timestamp > 8000) {
+            if (bubble.element && bubble.element.parentNode) {
+                bubble.element.parentNode.removeChild(bubble.element);
+            }
+            activeChatBubbles.splice(i, 1);
+            continue;
+        }
+
+        if (model && bubble.model) {
+            // Target the space right above the player's head
+            const headPosition = bubble.model.position.clone();
+            headPosition.y += 2.2;
+
+            const distance = headPosition.distanceTo(model.position);
+
+            if (distance > 30) {
+                // Too far to see
+                bubble.element.style.opacity = '0';
+            } else {
+                let opacity = 1.0;
+                let blur = 0;
+                let scale = 1.0;
+
+                // Close proximity is perfectly readable
+                // Outside the immediate circle, it rapidly blurs and fades
+                if (distance > 8) {
+                    opacity = Math.max(0, 1.0 - ((distance - 8) / 22));
+                    blur = (distance - 8) * 0.5; // 0px to 11px Blur
+                    scale = Math.max(0.6, 1.0 - ((distance - 8) / 44));
+                }
+
+                // Project 3D coordinate to 2D HTML Screen space
+                const vector = headPosition.project(camera);
+
+                // Only render if within the camera's forward view frustum (z < 1)
+                if (vector.z < 1) {
+                    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                    const y = -(vector.y * 0.5 - 0.5) * window.innerHeight;
+
+                    bubble.element.style.left = `${x}px`;
+                    bubble.element.style.top = `${y}px`;
+                    bubble.element.style.transform = `translate(-50%, -100%) scale(${scale})`;
+                    bubble.element.style.filter = `blur(${blur}px)`;
+                    bubble.element.style.opacity = opacity.toString();
+                } else {
+                    bubble.element.style.opacity = '0'; // Behind the camera
+                }
+            }
+        }
     }
 
     renderer.render(scene, camera);
