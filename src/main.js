@@ -109,20 +109,17 @@ function tintGhost(targetModel, hexColor) {
     if (!targetModel) return;
     targetModel.traverse((child) => {
         if (child.isMesh && child.material) {
-            child.material = child.material.clone(); // Un-share material
-
-            // Set the base color multiplier. If the model's texture is white/grey, 
-            // this will seamlessly tint the texture without destroying the shadows and geometry!
-            child.material.color.set(hexColor);
-
-            // Explicitly remove any emissive glow because emissive textures ignore scene lighting 
-            // and render completely flat/2D, which destroys the Avatar's shading!
-            if (child.material.emissive) {
-                child.material.emissive.setHex(0x000000);
-            }
-            if (child.material.emissiveMap) {
-                child.material.emissiveMap = null;
-            }
+            // Force the material into MeshStandardMaterial to guarantee 3D lighting interacts with it!
+            // If the original model had Unlit extensions, the tint would just be a flat 2D silhouette.
+            const newMat = new THREE.MeshStandardMaterial({
+                map: child.material.map || null,
+                color: hexColor,
+                roughness: 0.8,
+                metalness: 0.1,
+                transparent: child.material.transparent,
+                alphaTest: child.material.alphaTest
+            });
+            child.material = newMat;
 
             child.material.needsUpdate = true;
         }
