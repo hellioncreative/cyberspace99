@@ -487,6 +487,13 @@ function initEditor() {
         const id = mapSelect.value;
         if (!id) return;
 
+        const selectedMapName = mapSelect.options[mapSelect.selectedIndex].textContent;
+        if (selectedMapName.toLowerCase() === 'lobby') {
+            statusMsg.textContent = "Cannot delete the main Lobby map.";
+            setTimeout(() => statusMsg.textContent = "", 3000);
+            return;
+        }
+
         // Show custom modal instead of window.confirm
         if (deleteConfirmModal) {
             deleteConfirmModal.style.display = 'flex';

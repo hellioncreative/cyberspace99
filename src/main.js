@@ -61,7 +61,7 @@ const moveSpeed = 6;
 const playerRadius = 0.4;
 const infoElement = document.getElementById('info');
 
-let currentLevel = 0;
+let currentLevel = 'lobby';
 let mazeWalls = [];
 let npcs = [];
 let exitTiles = [];
@@ -459,8 +459,7 @@ function animate() {
                             loadLevel(currentLevel);
                         } else {
                             // Fallback logic
-                            currentLevel = parseInt(currentLevel) + 1;
-                            if (isNaN(currentLevel)) currentLevel = 0;
+                            currentLevel = 'lobby';
                             loadLevel(currentLevel);
                         }
                         break;

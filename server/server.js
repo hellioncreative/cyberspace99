@@ -43,17 +43,22 @@ app.get('/api/maps', async (req, res) => {
 });
 
 app.get('/api/maps/:id', async (req, res) => {
-    const { data: mapData, error } = await supabase
-        .from('maps')
-        .select('*')
-        .eq('id', req.params.id)
-        .single();
+    const isLobby = req.params.id.toLowerCase() === 'lobby';
+
+    let query = supabase.from('maps').select('*');
+
+    if (isLobby) {
+        query = query.ilike('name', 'Lobby').order('created_at', { ascending: true }).limit(1);
+    } else {
+        query = query.eq('id', req.params.id).single();
+    }
+
+    let { data, error } = await query;
+    let mapData = Array.isArray(data) ? data[0] : data;
 
     if (error || !mapData) {
-        // Fallback to a hardcoded response for the base level if not in DB yet
-        return res.json({
-            id: req.params.id,
-            name: "Default Room",
+        const defaultMap = {
+            name: isLobby ? "Lobby" : "Default Room",
             spawn: { x: 0, z: 2 },
             objects: [
                 { type: "wall", x: -2, z: -2, texture: "ground.png" },
@@ -68,6 +73,27 @@ app.get('/api/maps/:id', async (req, res) => {
                 { type: "wall", x: 2, z: 2, texture: "ground.png" },
                 { type: "npc", x: 0, z: -1, name: "Spidey", dialog: "Welcome to the new JSON map room!" }
             ]
+        };
+
+        if (isLobby) {
+            // Seed it directly into DB so we have a valid UUID to return!
+            const { data: newLobby, error: insertErr } = await supabase
+                .from('maps')
+                .insert([{ name: "Lobby", data: { spawn: defaultMap.spawn, objects: defaultMap.objects } }])
+                .select()
+                .single();
+
+            if (!insertErr && newLobby) {
+                return res.json(newLobby);
+            }
+        }
+
+        // True fallback if DB limits or missing normal ID
+        return res.json({
+            id: req.params.id,
+            name: defaultMap.name,
+            spawn: defaultMap.spawn,
+            objects: defaultMap.objects
         });
     }
 
@@ -133,6 +159,12 @@ app.delete('/api/maps/:id', async (req, res) => {
     try {
         const { id } = req.params;
         if (!id) return res.status(400).json({ error: "Missing ID" });
+
+        // Prevent deleting the Lobby map
+        const { data: mapData } = await supabase.from('maps').select('name').eq('id', id).single();
+        if (mapData && mapData.name && mapData.name.toLowerCase() === 'lobby') {
+            return res.status(403).json({ error: "Cannot delete the main Lobby map." });
+        }
 
         const { error } = await supabase
             .from('maps')
