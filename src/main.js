@@ -425,6 +425,8 @@ const keys = { w: false, a: false, s: false, d: false, q: false, e: false, Arrow
 const keyToButton = { 'w': 'ArrowUp', 'a': 'ArrowLeft', 's': 'ArrowDown', 'd': 'ArrowRight' };
 
 window.addEventListener('keydown', (e) => {
+    if (document.activeElement === chatInput && e.key !== 'Enter' && e.key !== 'Escape') return;
+
     let key = e.key;
     if (keyToButton[key]) key = keyToButton[key];
     if (key === 'Enter') keys.enter = true;
@@ -433,6 +435,8 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
+    if (document.activeElement === chatInput && e.key !== 'Enter' && e.key !== 'Escape') return;
+
     let key = e.key;
     if (keyToButton[key]) key = keyToButton[key];
     if (key === 'Enter') keys.enter = false;
