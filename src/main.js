@@ -51,8 +51,12 @@ function getTextureMaterial(textureName) {
     return textureCache[textureName];
 }
 
-const groundGeometry = new THREE.PlaneGeometry(100, 100);
-const ground = new THREE.Mesh(groundGeometry, getTextureMaterial('ground.png'));
+const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
+const groundTex = textureLoader.load('/ground.png');
+groundTex.wrapS = THREE.RepeatWrapping;
+groundTex.wrapT = THREE.RepeatWrapping;
+groundTex.repeat.set(1000, 1000); // Tile the texture
+const ground = new THREE.Mesh(groundGeometry, new THREE.MeshStandardMaterial({ map: groundTex }));
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
@@ -210,6 +214,7 @@ socket.on('chatHistory', (messages) => {
 
 // Map Global Coordinates for Teleports
 const worldSpawns = {};
+let worldRegions = [];
 
 async function loadWorld() {
     mazeWalls.forEach(wall => scene.remove(wall));
@@ -257,6 +262,29 @@ async function loadWorld() {
 
             const roomOffsetX = currentX * WORLD_SCALE_X;
             const roomOffsetZ = currentY * WORLD_SCALE_Z;
+
+            // Calculate Region Bounding Box for Location Display
+            let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+            mapData.objects.forEach(obj => {
+                if (obj.x < minX) minX = obj.x;
+                if (obj.x > maxX) maxX = obj.x;
+                if (obj.z < minZ) minZ = obj.z;
+                if (obj.z > maxZ) maxZ = obj.z;
+            });
+
+            // Convert local grid bounds to global 3D coordinates
+            const globalMinX = roomOffsetX + (minX * wallSize);
+            const globalMaxX = roomOffsetX + (maxX * wallSize);
+            const globalMinZ = roomOffsetZ + (minZ * wallSize);
+            const globalMaxZ = roomOffsetZ + (maxZ * wallSize);
+
+            worldRegions.push({
+                name: mapObj.name || "Unknown Region",
+                minX: globalMinX - (wallSize / 2),
+                maxX: globalMaxX + (wallSize / 2),
+                minZ: globalMinZ - (wallSize / 2),
+                maxZ: globalMaxZ + (wallSize / 2)
+            });
 
             // Save global spawn for teleports
             const globalSpawnX = roomOffsetX + (mapData.spawn.x * wallSize);
@@ -570,6 +598,24 @@ function animate() {
     Object.values(playerMixers).forEach(pm => {
         if (pm) pm.update(delta);
     });
+
+    // Update Region Location UI
+    if (model) {
+        let foundRegion = "The Void";
+        for (let i = 0; i < worldRegions.length; i++) {
+            const r = worldRegions[i];
+            if (model.position.x >= r.minX && model.position.x <= r.maxX &&
+                model.position.z >= r.minZ && model.position.z <= r.maxZ) {
+                foundRegion = r.name;
+                break;
+            }
+        }
+
+        const expectedText = `Location: ${foundRegion}`;
+        if (infoElement.textContent !== expectedText) {
+            infoElement.textContent = expectedText;
+        }
+    }
 
     if (model && scene.children.includes(model)) {
         const targetPosition = model.position.clone().add(new THREE.Vector3(0, 1.2, 0));
