@@ -143,14 +143,14 @@ canvas {
 /* Chat UI */
 #chat-container {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
+    left: -1000px;
+    top: -1000px;
     width: 350px;
-    max-height: 250px;
     display: flex;
     flex-direction: column;
     z-index: 50;
     pointer-events: none;
+    transform: translate(-50%, 20px);
 }
 
 #chat-messages {
@@ -193,7 +193,7 @@ canvas {
     font-size: 15px;
     font-weight: bold;
     pointer-events: none;
-    transform: translate(-50%, 15px);
+    transform: translate(15px, calc(-100% - 15px));
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
     max-width: 180px;
     word-wrap: break-word;
@@ -203,13 +203,12 @@ canvas {
     will-change: transform, filter, opacity;
 }
 
-.chat-bubble::before {
+.chat-bubble::after {
     content: '';
     position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-width: 0 10px 10px 10px;
+    bottom: -10px;
+    left: 15px;
+    border-width: 10px 10px 0 10px;
     border-style: solid;
-    border-color: transparent transparent rgba(255, 255, 255, 0.95) transparent;
+    border-color: rgba(255, 255, 255, 0.95) transparent transparent transparent;
 }

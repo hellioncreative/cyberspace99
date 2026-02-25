@@ -676,9 +676,9 @@ function animate() {
         }
 
         if (model && bubble.model) {
-            // Target the space directly below the player
-            // The model.position.clone() gets the base of the model (the feet, typically y=0 for grounded models)
+            // Target the space right above the player's head
             const basePosition = bubble.model.position.clone();
+            basePosition.y += 2.2;
 
             const distance = basePosition.distanceTo(model.position);
 
@@ -708,13 +708,31 @@ function animate() {
 
                     bubble.element.style.left = `${x}px`;
                     bubble.element.style.top = `${y}px`;
-                    bubble.element.style.transform = `translate(-50%, 15px) scale(${scale})`;
+                    // Let CSS handle the offset translate
+                    bubble.element.style.transform = `translate(15px, calc(-100% - 15px)) scale(${scale})`;
                     bubble.element.style.filter = `blur(${blur}px)`;
                     bubble.element.style.opacity = opacity.toString();
                 } else {
                     bubble.element.style.opacity = '0'; // Behind the camera
                 }
             }
+        }
+    }
+
+    // Floating Chat Bar tracking beneath the local player
+    const inputEl = document.getElementById('chat-input');
+    const containerEl = document.getElementById('chat-container');
+    if (model && inputEl && inputEl.classList.contains('active')) {
+        const inputPos = model.position.clone();
+
+        // Project local player base to screen space
+        const v = inputPos.project(camera);
+        if (v.z < 1) {
+            const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+            const y = -(v.y * 0.5 - 0.5) * window.innerHeight;
+
+            containerEl.style.left = `${x}px`;
+            containerEl.style.top = `${y}px`;
         }
     }
 
