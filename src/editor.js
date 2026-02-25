@@ -182,6 +182,62 @@ function initEditor() {
         });
     }
 
+    // Custom Async Map Select Prompt
+    async function customMapSelectPrompt() {
+        return new Promise(async (resolve) => {
+            const modal = document.getElementById('map-select-modal');
+            const selectEl = document.getElementById('map-select-prompt');
+            const cancelBtn = document.getElementById('cancel-map-select-btn');
+            const submitBtn = document.getElementById('submit-map-select-btn');
+
+            if (!modal || !selectEl) {
+                resolve(prompt("Enter Target Room ID (UUID) for this exit:", "")); // Fallback
+                return;
+            }
+
+            // Fetch Maps to populate the dropdown
+            try {
+                selectEl.innerHTML = '<option value="">Loading maps...</option>';
+                const res = await fetch('/api/maps');
+                const list = await res.json();
+                selectEl.innerHTML = '<option value="">-- Select a Map --</option>';
+                list.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.id;
+                    opt.textContent = m.name;
+                    selectEl.appendChild(opt);
+                });
+            } catch (err) {
+                console.error("Failed to load maps for dropdown", err);
+                selectEl.innerHTML = '<option value="">Error loading maps</option>';
+            }
+
+            modal.style.display = 'flex';
+            selectEl.focus();
+
+            const cleanup = () => {
+                modal.style.display = 'none';
+                cancelBtn.removeEventListener('click', onCancel);
+                submitBtn.removeEventListener('click', onSubmit);
+                selectEl.removeEventListener('keydown', onKey);
+            };
+
+            const onCancel = () => { cleanup(); resolve(null); };
+            const onSubmit = () => {
+                cleanup();
+                resolve(selectEl.value || null);
+            };
+            const onKey = (e) => {
+                if (e.key === 'Enter') onSubmit();
+                if (e.key === 'Escape') onCancel();
+            };
+
+            cancelBtn.addEventListener('click', onCancel);
+            submitBtn.addEventListener('click', onSubmit);
+            selectEl.addEventListener('keydown', onKey);
+        });
+    }
+
     async function paintOrErase(e, isDrag) {
         mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -239,7 +295,7 @@ function initEditor() {
                 mesh = new THREE.Mesh(exitGeometry, exitMaterial);
                 mesh.position.set(rx * wallSize, 0.1, rz * wallSize);
                 objData.type = 'exit';
-                objData.targetMapId = await customPrompt("Enter Target Room ID (UUID) for this exit:", "");
+                objData.targetMapId = await customMapSelectPrompt();
                 if (!objData.targetMapId) return; // Cancelled
             }
 
