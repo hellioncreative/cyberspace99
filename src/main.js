@@ -108,18 +108,23 @@ let gltfModelTemplate = null;
 function tintGhost(targetModel, hexColor) {
     if (!targetModel) return;
     targetModel.traverse((child) => {
-        if (child.isMesh) {
-            // Un-share material so each player can have a unique color
-            child.material = child.material.clone();
+        if (child.isMesh && child.material) {
+            child.material = child.material.clone(); // Un-share material
 
             // Set the base color multiplier. If the model's texture is white/grey, 
-            // this will seamlessly tint the texture without destroying the details.
+            // this will seamlessly tint the texture without destroying the shadows and geometry!
             child.material.color.set(hexColor);
 
-            // Ensure any previous emissive glow doesn't overpower the new color
+            // Explicitly remove any emissive glow because emissive textures ignore scene lighting 
+            // and render completely flat/2D, which destroys the Avatar's shading!
             if (child.material.emissive) {
                 child.material.emissive.setHex(0x000000);
             }
+            if (child.material.emissiveMap) {
+                child.material.emissiveMap = null;
+            }
+
+            child.material.needsUpdate = true;
         }
     });
 }
@@ -237,6 +242,13 @@ chatInput.addEventListener('keydown', (e) => {
             e.preventDefault(); // Prevent accidental line breaks
             e.stopPropagation(); // Prevent bubbling up to window interact
         }
+    } else if (e.key === 'Escape') {
+        // Escape closes the chat box instantly
+        chatInput.value = '';
+        chatInput.blur();
+        chatInput.classList.remove('active');
+        e.preventDefault();
+        e.stopPropagation();
     }
 });
 
@@ -768,6 +780,23 @@ function animate() {
     }
 
 
+
+    // Floating Chat Bar tracking beneath the local player
+    const inputEl = document.getElementById('chat-input');
+    const containerEl = document.getElementById('chat-container');
+    if (model && inputEl && inputEl.classList.contains('active')) {
+        const inputPos = model.position.clone();
+
+        // Project local player base to screen space
+        const v = inputPos.project(camera);
+        if (v.z < 1) {
+            const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+            const y = -(v.y * 0.5 - 0.5) * window.innerHeight;
+
+            containerEl.style.left = `${x}px`;
+            containerEl.style.top = `${y}px`;
+        }
+    }
 
     renderer.render(scene, camera);
 }

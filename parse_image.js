@@ -1,0 +1,10 @@
+const fs = require('fs');
+const buffer = fs.readFileSync('public/ghost.gltf');
+const jsonLength = buffer.readUInt32LE(12);
+const jsonStr = buffer.toString('utf8', 20, 20 + jsonLength);
+const j = JSON.parse(jsonStr);
+const binStart = 20 + jsonLength + 8;
+const imageView = j.bufferViews[j.images[0].bufferView];
+const imageBuffer = buffer.subarray(binStart + imageView.byteOffset, binStart + imageView.byteOffset + imageView.byteLength);
+fs.writeFileSync('public/ghost_texture.png', imageBuffer);
+console.log('done');

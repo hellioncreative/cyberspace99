@@ -143,13 +143,14 @@ canvas {
 /* Chat UI */
 #chat-container {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
+    left: -1000px;
+    top: -1000px;
     width: 350px;
     display: flex;
     flex-direction: column;
     z-index: 50;
     pointer-events: none;
+    transform: translate(-50%, 20px);
 }
 
 #chat-messages {
