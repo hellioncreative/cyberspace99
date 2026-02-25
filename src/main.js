@@ -109,10 +109,17 @@ function tintGhost(targetModel, hexColor) {
     if (!targetModel) return;
     targetModel.traverse((child) => {
         if (child.isMesh) {
-            child.material = child.material.clone(); // Un-share material
-            child.material.color.setHex(0x000000); // Base black
-            child.material.emissive.set(hexColor); // Glowing tint
-            child.material.emissiveIntensity = 0.5;
+            // Un-share material so each player can have a unique color
+            child.material = child.material.clone();
+
+            // Set the base color multiplier. If the model's texture is white/grey, 
+            // this will seamlessly tint the texture without destroying the details.
+            child.material.color.set(hexColor);
+
+            // Ensure any previous emissive glow doesn't overpower the new color
+            if (child.material.emissive) {
+                child.material.emissive.setHex(0x000000);
+            }
         }
     });
 }
