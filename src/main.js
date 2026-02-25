@@ -676,9 +676,9 @@ function animate() {
         }
 
         if (model && bubble.model) {
-            // Target the space right above the player's head
+            // Target the space slightly above the player's head
             const basePosition = bubble.model.position.clone();
-            basePosition.y += 2.2;
+            basePosition.y += 1.0;
 
             const distance = basePosition.distanceTo(model.position);
 
