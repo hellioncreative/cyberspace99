@@ -140,7 +140,7 @@ function addOtherPlayer(playerInfo) {
     nametagTexture.minFilter = THREE.LinearFilter;
     const nametagMaterial = new THREE.SpriteMaterial({ map: nametagTexture, depthTest: false, depthWrite: true });
     const nametag = new THREE.Sprite(nametagMaterial);
-    nametag.position.y = 3.5;
+    nametag.position.y = 2.8;
     nametag.scale.set(3, 0.75, 1);
 
     clonedScene.add(nametag);
@@ -194,6 +194,7 @@ chatInput.addEventListener('keydown', (e) => {
         chatInput.blur();
         chatInput.classList.remove('active');
         e.preventDefault(); // Prevent accidental line breaks
+        e.stopPropagation(); // Prevent bubbling up to window interact
     }
 });
 
@@ -692,10 +693,10 @@ function animate() {
 
                 // Close proximity is perfectly readable
                 // Outside the immediate circle, it rapidly blurs and fades
-                if (distance > 8) {
-                    opacity = Math.max(0, 1.0 - ((distance - 8) / 22));
-                    blur = (distance - 8) * 0.5; // 0px to 11px Blur
-                    scale = Math.max(0.6, 1.0 - ((distance - 8) / 44));
+                if (distance > 4) {
+                    opacity = Math.max(0, 1.0 - ((distance - 4) / 22));
+                    blur = (distance - 4) * 0.8;
+                    scale = Math.max(0.6, 1.0 - ((distance - 4) / 44));
                 }
 
                 // Project 3D coordinate to 2D HTML Screen space
