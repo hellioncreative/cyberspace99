@@ -379,7 +379,7 @@ const cameraRight = new THREE.Vector3();
 const moveVector = new THREE.Vector3();
 const cameraRaycaster = new THREE.Raycaster();
 
-const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, enter: false, escape: false };
+const keys = { w: false, a: false, s: false, d: false, q: false, e: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, enter: false, escape: false };
 const keyToButton = { 'w': 'ArrowUp', 'a': 'ArrowLeft', 's': 'ArrowDown', 'd': 'ArrowRight' };
 
 window.addEventListener('keydown', (e) => {
@@ -396,6 +396,23 @@ window.addEventListener('keyup', (e) => {
     if (key === 'Enter') keys.enter = false;
     if (key === 'Escape') keys.escape = false;
     if (keys.hasOwnProperty(key)) keys[key] = false;
+});
+
+// Pointer Lock and Mouse Look
+let mouseDeltaX = 0;
+document.addEventListener('click', () => {
+    // Only request pointer lock if we are actively in the game UI (not login)
+    if (document.getElementById('game-ui').style.display === 'block') {
+        if (document.pointerLockElement !== document.body) {
+            document.body.requestPointerLock();
+        }
+    }
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (document.pointerLockElement === document.body) {
+        mouseDeltaX += e.movementX;
+    }
 });
 
 function animate() {
@@ -501,8 +518,16 @@ function animate() {
 
     // Camera Rotation
     let rotX = 0;
-    if (keys['a']) rotX -= 1; // Or q/e if you wanted them for rotation
-    if (keys['d']) rotX += 1;
+
+    // Apply Keyboard Rotation
+    if (keys['q']) rotX -= 1.5;
+    if (keys['e']) rotX += 1.5;
+
+    // Apply Mouse Look
+    if (mouseDeltaX !== 0) {
+        cameraAzimuth -= mouseDeltaX * 0.003;
+        mouseDeltaX = 0;
+    }
 
     if (gamepad) {
         const rightStickX = gamepad.axes[2];
